@@ -1,5 +1,7 @@
 # 山寨币异动观察站
 
+简体中文 · [English](README.en.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md)
+
 用币安公开行情监控 RAVE、BSB、EVAA、LAB 的 Windows 桌面工具。手动启动后每 5 分钟扫描一次，记录异常放量和价格波动，并追踪预警后的 3、7、14 天涨跌情况。无需登录币安或配置 API 密钥，程序只读行情。
 
 ## 安装与运行
@@ -12,7 +14,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m klinebot.alt_monitor_app
 ```
 
-配置完成后也可以双击 `start-monitor.bat`。进入窗口后点击「开始监控」定时扫描，或点击「立即扫描」执行一轮。最小化后会继续运行，关闭窗口即停止。
+配置完成后也可以双击 `start-monitor.bat`。右上角可以切换简体中文、英语、日语、韩语和西班牙语，程序会记住你的选择。点击「开始监控」定时扫描，或点击「立即扫描」执行一轮。最小化后会继续运行，关闭窗口即停止。
 
 只扫描一次并输出 JSON 事件：
 

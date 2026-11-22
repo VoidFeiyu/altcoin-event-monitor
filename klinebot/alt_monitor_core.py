@@ -211,14 +211,17 @@ class Store:
         with self.connect() as db:
             db.execute('DELETE FROM bars WHERE symbol=? AND end_ms<?', (symbol,before))
 
-    def export(self, path: Path):
+    def export(self, path: Path, *, translate=str):
         with Path(path).open('w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
-            writer.writerow(['币种', '模型', '预警K线结束UTC', '实际扫描UTC', '预警价USDT', '冻结幅度', '触发依据', '3天结果', '7天结果', '14天结果', '规则版本'])
+            headers = ('币种', '模型', '预警K线结束UTC', '实际扫描UTC', '预警价USDT', '冻结幅度',
+                       '触发依据', '3天结果', '7天结果', '14天结果', '规则版本')
+            writer.writerow(map(translate, headers))
             for a in self.alerts(100000):
                 dt = lambda t: pd.Timestamp(t, unit='ms', tz='UTC').isoformat()
                 writer.writerow([a['symbol'], a['model'], dt(a['bar_ms']), dt(a['observed_ms']), a['price'], a['threshold'],
-                                 '、'.join(a['evidence'].get('triggers', [])), *[a['outcomes'][str(h)]['status'] for h in (72, 168, 336)], a['version']])
+                                 translate('、').join(map(translate, a['evidence'].get('triggers', []))),
+                                 *(translate(a['outcomes'][str(h)]['status']) for h in (72, 168, 336)), a['version']])
 
 
 def _asof(series: pd.Series, ix: pd.DatetimeIndex, prior=False):
