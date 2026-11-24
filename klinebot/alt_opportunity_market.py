@@ -24,6 +24,8 @@ ETH_POOL = '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'
 FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984'
 QUOTER = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e'
 MULTICALL = '0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696'
+MINT = '0x7a53080ba414158be7ec69b987b5fb7d07dee101fe85488f0853ae16239d0bde'
+BURN = '0x0c396cd989a39f4459b5fa1aed6a9a8dcdbc45908acfd67e028cd568da98982c'
 
 
 class DataUnavailable(RuntimeError):
@@ -205,7 +207,7 @@ class Ethereum:
     def call(self, address, data, block):
         return self.rpc('eth_call', {'to': address, 'data': '0x' + data}, hex(block))
 
-    def calls(self, address, selectors, block):
+    def calls(self, address, selectors, block, *, multicall=MULTICALL, raw_call=None):
         """Multicall2 aggregate. All reads come from the same pinned historical block."""
         head, tail = [], []
         offset = 32 * len(selectors)
@@ -215,8 +217,9 @@ class Ethereum:
             head.append(word(offset))
             tail.append(call)
             offset += len(call) // 2
-        raw = bytes.fromhex(self.call(MULTICALL, '252dba42' + word(32) + word(len(selectors))
-                                      + ''.join(head + tail), block)[2:])
+        call_contract = raw_call or self.call
+        raw = bytes.fromhex(call_contract(multicall, '252dba42' + word(32) + word(len(selectors))
+                                          + ''.join(head + tail), block)[2:])
 
         def at(pos):
             if pos < 0 or pos + 32 > len(raw):

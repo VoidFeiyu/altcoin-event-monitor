@@ -2,7 +2,7 @@
 
 [简体中文](README.md) · English · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md)
 
-A read-only Windows research app for altcoin alerts, funding and basis, on-chain spreads, and LP hedge replay. The event radar monitors RAVE, BSB, EVAA and LAB, and tracks alert outcomes over 3, 7 and 14 days. The app uses public data without an account or trading API key.
+A read-only Windows app for market alerts, funding and basis, on-chain spreads, and LP hedge replay. Search active assets on Binance Spot and Alpha, scan a watchlist or the full catalog in rotation, and track alert outcomes over 3, 7 and 14 days. No account or trading API key is required.
 
 ## Install and run
 
@@ -18,15 +18,15 @@ After setup, you can also double-click `start-monitor.bat`. Choose English in th
 
 ## Opportunity research
 
-- **Funding & basis.** Compare OKX spot and linear perpetuals for ETH, SOL and LINK. The estimate uses equal token quantities, the actual funding interval, and round-trip fees. The first positive estimate is tracked through settlement using the settled rate and a later order book sample.
-- **On-chain spreads.** Compare both directions for ETH and LINK between Ethereum Uniswap v3 and OKX USDC spot, including exchange fees and estimated gas. The model assumes inventory on both venues. Positive spans reflect consecutive valid observations.
-- **LP hedge replay.** Replay the Uniswap v3 ETH/USDC 0.05% pool with an optional OKX ETH perpetual hedge. Configure roughly 6, 12 or 24 hours, capital, price range, hedge ratio and costs. The replay values USDT and USDC 1:1.
+- **Funding & basis.** Leave the asset field blank to rotate through OKX assets with both USDT spot and linear perps, or enter comma-separated symbols. Samples compare equal quantities and use the actual settlement interval.
+- **On-chain spreads.** Compare equal quantities between a selected V3 pool and matching OKX spot, including trading fees and estimated gas. The simulation assumes inventory on both sides.
+- **LP hedge replay.** Use a selected V3 pool over roughly 6, 12 or 24 hours. A 0% hedge uses pool data alone. Hedged replay requires a matching OKX USDT perp and values USDT and USDC 1:1.
 
-The first two pages support one-off or five-minute sampling. Each page exports selected evidence as JSON. Public sources are OKX, Ethereum dRPC and PublicNode. Results are simulations and omit margin capital and the cost of moving inventory between venues.
+The first two pages support one-off and five-minute sampling. All three export selected evidence as JSON. Spreads and hedges match the contract ticker against OKX and exports preserve pool and market details.
 
-## EVAA event replay
+## On-chain event replay
 
-Select an EVAA alert and open **Replay** on the EVAA card, or replay the latest complete window. Choose 3, 5 or 10 minutes per side of the alert candle close. The page compares the BNB Chain Uniswap v3 0.30% and PancakeSwap v3 0.01% EVAA/USDT pools. Three block checkpoints use the same EVAA quantity for buy and sell quotes, including pool fees and price impact. Gas is excluded. The timeline preserves swap, liquidity addition and removal evidence with transaction hashes. Missing historical quotes are marked, and saved replays can be exported as JSON.
+Open from a radar asset or alert, choose a token, or enter an ERC-20 contract on Ethereum or BNB Smart Chain. The app finds direct USDT or USDC pools on Uniswap v3 and PancakeSwap v3. Choose 3, 5 or 10 minutes on each side of the alert close or use the latest complete window. Three blocks use the same quantity for quotes. Quote and event views are separate and events retain transaction hashes. Missing liquidity or historical data is marked. Results export as JSON.
 
 ## Alert rules
 
@@ -35,16 +35,16 @@ Select an EVAA alert and open **Replay** on the EVAA card, or replay the latest 
 - **OB, open interest spike.** Four-hour growth in open interest quantity reaches both 10% and the previous 30-day 95th percentile.
 - **C, funding anomaly.** Settled funding, normalized by settlement interval, reaches the positive 95th-percentile threshold or falls below the negative 5th-percentile threshold.
 
-The spot model requires A and E. The full model requires at least two conditions, including A or OB. Each model has a 24-hour cooldown per token. The full model depends on current derivatives data. The spot model can run independently.
+The full-catalog radar uses an active pair per asset on each market, preferring stablecoin quotes, and requires A and E on closed five-minute candles. Each asset has a 24-hour cooldown. Earlier alerts using OB and C remain available.
 
 The default outcome threshold is 20%. The menu also offers 10%, 30% and 50%. The threshold is saved with each alert. Three consecutive traded five-minute candles must close at or beyond it in the same direction. The app tracks open windows and data gaps separately.
 
 ## Data and testing
 
-The app tries to recover the last 32 days of spot data on the first scan. Alerts, settings, cached market data and logs live under `data/alt_event_monitor/`. You can export alerts to CSV. The historical replay tab has no entries until a local research archive is supplied.
+Full-market scanning processes up to 24 assets per batch and resumes from the saved position about one minute after a batch finishes. Watchlist monitoring runs about every five minutes. The app tries to recover the last 32 days of spot data on the first scan. Alerts, settings, cached market data and logs live under `data/alt_event_monitor/`. You can export alerts to CSV. The historical replay tab has no entries until a local research archive is supplied.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_chain_replay -v
 ```
 
 ## License
