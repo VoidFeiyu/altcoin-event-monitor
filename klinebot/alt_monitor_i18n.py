@@ -3,6 +3,8 @@
 import locale
 import re
 
+from .alt_opportunity_i18n import MESSAGES as OPPORTUNITY_MESSAGES
+
 
 LANGUAGES = {
     'zh-Hans': '简体中文',
@@ -830,7 +832,7 @@ def system_language():
 
 
 def translate(language, key, *args):
-    translations = _MESSAGES.get(key)
+    translations = _MESSAGES.get(key) or OPPORTUNITY_MESSAGES.get(key)
     if translations and language in _TRANSLATED_LANGUAGES:
         key = translations[_TRANSLATED_LANGUAGES.index(language)]
     return key.format(*args) if args else key

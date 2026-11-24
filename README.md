@@ -22,6 +22,16 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m klinebot.alt_monitor_app --scan-once
 ```
 
+## 机会研究
+
+| 页面 | 数据与结果 |
+| --- | --- |
+| 费率与基差 | OKX 的 ETH、SOL、LINK USDT 现货和线性永续。按实际结算周期比较费率，以相同币数量读取两边盘口，扣往返费用。首个正净额样本会跟踪至下一结算，并以实际费率和结算后盘口模拟退出。 |
+| 链上价差 | Ethereum 主网的 Uniswap v3 与 OKX USDC 现货。按相同数量比较 ETH、LINK 的双向报价，扣除交易所费和估算 Gas，记录正价差在有效采样中持续的时间。模型假定两边已有库存。 |
+| LP 对冲回放 | 用 Uniswap v3 ETH/USDC 0.05% 池的历史状态和已结算资金费率，比较 LP 单独持有与 OKX 永续对冲。可设置约 6/12/24 小时、LP 本金、区间宽度、对冲比例和成本。回放按 USDT 与 USDC 1:1 计价。 |
+
+前两页支持立即采样或每 5 分钟采样。三页都能导出所选记录的 JSON 证据。只读数据源包括 OKX、Ethereum dRPC 和 PublicNode。净额是模拟结果。费用、盘口深度、数据可用性和观察间隔会影响结果，模型未计保证金占用或跨平台资金调拨成本。
+
 ## 异动规则
 
 | 条件 | 默认规则 |
@@ -42,7 +52,7 @@ py -3.12 -m venv .venv
 运行现有测试：
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
 ```
 
 本项目采用 [MIT 许可证](LICENSE)。

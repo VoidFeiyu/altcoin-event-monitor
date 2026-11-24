@@ -16,6 +16,14 @@ py -3.12 -m venv .venv
 
 설치 후 `start-monitor.bat`을 두 번 클릭해도 실행할 수 있습니다. 언어 메뉴에서 한국어를 선택하면 설정이 저장됩니다. ‘모니터링 시작’으로 정기 스캔을 실행하거나 ‘지금 스캔’으로 한 번만 확인할 수 있습니다. 창을 닫으면 종료됩니다.
 
+## 거래 기회 분석
+
+- **펀딩비와 베이시스**. OKX의 ETH·SOL·LINK 현물과 선형 무기한 계약을 비교합니다. 같은 수량, 실제 정산 주기, 왕복 수수료로 순손익을 추정합니다. 첫 양의 추정치는 확정 펀딩비와 정산 후 호가로 추적합니다.
+- **온체인 가격차**. Ethereum Uniswap v3와 OKX USDC 현물에서 ETH·LINK의 양방향 가격차를 비교합니다. 양쪽 재고를 가정하고 거래소 수수료와 추정 가스비를 차감합니다. 양의 가격차 기간은 연속 유효 표본으로 계산합니다.
+- **LP 헤지 재현**. Uniswap v3 ETH/USDC 0.05% 풀의 과거 상태로 LP를 재현하고 OKX ETH 무기한 헤지 결과와 비교합니다. 약 6·12·24시간 중 선택하고 원금, 범위, 헤지 비율, 비용을 설정합니다. USDT와 USDC는 1:1로 평가합니다.
+
+앞의 두 페이지는 즉시 수집과 5분 간격 수집을 지원합니다. 각 페이지에서 선택한 근거를 JSON으로 내보낼 수 있습니다. 공개 데이터는 OKX, Ethereum dRPC, PublicNode에서 가져옵니다. 결과는 모의 계산이며 증거금 점유와 시장 간 재고 이동 비용은 제외합니다.
+
 ## 알림 규칙
 
 - **A · 현물 거래량 급증.** 최근 1시간 거래대금이 직전 30일 시간별 중앙값의 2배 이상이며 95백분위수 이상입니다.
@@ -32,7 +40,7 @@ py -3.12 -m venv .venv
 첫 스캔에서 최근 32일 현물 데이터를 보충하려고 시도합니다. 알림, 설정, 시세 캐시, 로그는 `data/alt_event_monitor/`에 저장됩니다. 알림은 CSV로 내보낼 수 있습니다. 과거 리플레이 목록은 로컬 연구 자료가 있을 때 표시됩니다.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
 ```
 
 ## 라이선스

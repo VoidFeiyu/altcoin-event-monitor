@@ -16,6 +16,14 @@ py -3.12 -m venv .venv
 
 After setup, you can also double-click `start-monitor.bat`. Choose English in the language menu. The app remembers your selection. Select **Start monitor** to scan on a schedule or **Scan now** to run once. Closing the window stops monitoring.
 
+## Opportunity research
+
+- **Funding & basis.** Compare OKX spot and linear perpetuals for ETH, SOL and LINK. The estimate uses equal token quantities, the actual funding interval, and round-trip fees. The first positive estimate is tracked through settlement using the settled rate and a later order book sample.
+- **On-chain spreads.** Compare both directions for ETH and LINK between Ethereum Uniswap v3 and OKX USDC spot, including exchange fees and estimated gas. The model assumes inventory on both venues. Positive spans reflect consecutive valid observations.
+- **LP hedge replay.** Replay the Uniswap v3 ETH/USDC 0.05% pool with an optional OKX ETH perpetual hedge. Configure roughly 6, 12 or 24 hours, capital, price range, hedge ratio and costs. The replay values USDT and USDC 1:1.
+
+The first two pages support one-off or five-minute sampling. Each page exports selected evidence as JSON. Public sources are OKX, Ethereum dRPC and PublicNode. Results are simulations and omit margin capital and the cost of moving inventory between venues.
+
 ## Alert rules
 
 - **A, volume spike.** The latest hour’s spot quote volume reaches both twice the previous 30-day hourly median and its 95th percentile.
@@ -32,7 +40,7 @@ The default outcome threshold is 20%. The menu also offers 10%, 30% and 50%. The
 The app tries to recover the last 32 days of spot data on the first scan. Alerts, settings, cached market data and logs live under `data/alt_event_monitor/`. You can export alerts to CSV. The historical replay tab has no entries until a local research archive is supplied.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
 ```
 
 ## License
