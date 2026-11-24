@@ -24,6 +24,10 @@ After setup, you can also double-click `start-monitor.bat`. Choose English in th
 
 The first two pages support one-off or five-minute sampling. Each page exports selected evidence as JSON. Public sources are OKX, Ethereum dRPC and PublicNode. Results are simulations and omit margin capital and the cost of moving inventory between venues.
 
+## EVAA event replay
+
+Select an EVAA alert and open **Replay** on the EVAA card, or replay the latest complete window. Choose 3, 5 or 10 minutes per side of the alert candle close. The page compares the BNB Chain Uniswap v3 0.30% and PancakeSwap v3 0.01% EVAA/USDT pools. Three block checkpoints use the same EVAA quantity for buy and sell quotes, including pool fees and price impact. Gas is excluded. The timeline preserves swap, liquidity addition and removal evidence with transaction hashes. Missing historical quotes are marked, and saved replays can be exported as JSON.
+
 ## Alert rules
 
 - **A, volume spike.** The latest hour’s spot quote volume reaches both twice the previous 30-day hourly median and its 95th percentile.
@@ -40,7 +44,7 @@ The default outcome threshold is 20%. The menu also offers 10%, 30% and 50%. The
 The app tries to recover the last 32 days of spot data on the first scan. Alerts, settings, cached market data and logs live under `data/alt_event_monitor/`. You can export alerts to CSV. The historical replay tab has no entries until a local research archive is supplied.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
 ```
 
 ## License

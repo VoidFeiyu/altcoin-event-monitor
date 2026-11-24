@@ -24,6 +24,10 @@ py -3.12 -m venv .venv
 
 앞의 두 페이지는 즉시 수집과 5분 간격 수집을 지원합니다. 각 페이지에서 선택한 근거를 JSON으로 내보낼 수 있습니다. 공개 데이터는 OKX, Ethereum dRPC, PublicNode에서 가져옵니다. 결과는 모의 계산이며 증거금 점유와 시장 간 재고 이동 비용은 제외합니다.
 
+## EVAA 이벤트 재현
+
+EVAA 알림을 선택하고 카드의 **재현**을 엽니다. 최근 완료 구간도 선택할 수 있습니다. 알림 봉 마감 전후 3·5·10분의 BNB Chain Uniswap v3 0.30%와 PancakeSwap v3 0.01% EVAA/USDT 풀을 비교합니다. 세 블록에서 같은 EVAA 수량의 매수와 매도를 비교하며 풀 수수료와 가격 충격을 포함합니다. 가스비는 제외합니다. 스왑과 유동성 추가·제거에는 거래 해시가 표시됩니다. 누락된 과거 호가는 별도로 표시하고 결과를 JSON으로 내보낼 수 있습니다.
+
 ## 알림 규칙
 
 - **A · 현물 거래량 급증.** 최근 1시간 거래대금이 직전 30일 시간별 중앙값의 2배 이상이며 95백분위수 이상입니다.
@@ -40,7 +44,7 @@ py -3.12 -m venv .venv
 첫 스캔에서 최근 32일 현물 데이터를 보충하려고 시도합니다. 알림, 설정, 시세 캐시, 로그는 `data/alt_event_monitor/`에 저장됩니다. 알림은 CSV로 내보낼 수 있습니다. 과거 리플레이 목록은 로컬 연구 자료가 있을 때 표시됩니다.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
 ```
 
 ## 라이선스

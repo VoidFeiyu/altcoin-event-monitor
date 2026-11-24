@@ -32,6 +32,12 @@ py -3.12 -m venv .venv
 
 前两页支持立即采样或每 5 分钟采样。三页都能导出所选记录的 JSON 证据。只读数据源包括 OKX、Ethereum dRPC 和 PublicNode。净额是模拟结果。费用、盘口深度、数据可用性和观察间隔会影响结果，模型未计保证金占用或跨平台资金调拨成本。
 
+## EVAA 事件回放
+
+选中一条 EVAA 预警，再点击 EVAA 卡片上的「链上回放」。也可直接打开回放页，查看最近一个完整窗口。前后各 3、5 或 10 分钟的区块按预警 K 线收盘时间对齐。页面比较 BNB Chain 上 Uniswap v3 0.30% 与 PancakeSwap v3 0.01% 两个 EVAA/USDT 池。双向报价在三个区块使用同一 EVAA 数量，成本含池费和价格冲击，未计 Gas。
+
+时间轴保留交易哈希、区块和日志序号，可查看成交与新增、移除流动性。净买入按各池 Swap 的 USDT 净变化计算。撤出计数区分是否发生在当时价格所在的区间。历史区块状态读不到时，报价单独标记为缺口。回放结果保存在本机，可导出完整 JSON。
+
 ## 异动规则
 
 | 条件 | 默认规则 |
@@ -52,7 +58,7 @@ py -3.12 -m venv .venv
 运行现有测试：
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
 ```
 
 本项目采用 [MIT 许可证](LICENSE)。
