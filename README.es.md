@@ -16,6 +16,14 @@ py -3.12 -m venv .venv
 
 Después de la instalación también puedes abrir `start-monitor.bat`. Selecciona Español en el menú de idioma para guardar tu preferencia. Pulsa **Iniciar monitor** para activar los escaneos periódicos o **Escanear ahora** para hacer solo uno. Al cerrar la ventana se detiene el monitor.
 
+## Análisis de oportunidades
+
+- **Financiación y base.** Compara ETH, SOL y LINK al contado y en perpetuos lineales de OKX. Calcula el neto con cantidades iguales, intervalos reales y comisiones de ida y vuelta. La primera estimación positiva se sigue con la tasa liquidada y el libro posterior.
+- **Diferenciales en cadena.** Compara ambos sentidos para ETH y LINK entre Uniswap v3 de Ethereum y el mercado USDC de OKX. Supone inventario en ambos mercados y descuenta comisiones y gas estimado. La duración positiva se basa en muestras válidas consecutivas.
+- **Simulación de cobertura LP.** Usa el historial del pool ETH/USDC al 0,05% de Uniswap v3 para comparar el LP con y sin cobertura mediante el perpetuo ETH de OKX. Permite configurar unas 6, 12 o 24 horas, capital, rango, cobertura y costes. Valora USDT y USDC 1:1.
+
+Las dos primeras páginas admiten muestras puntuales o cada cinco minutos. Cada página permite exportar la evidencia seleccionada a JSON. Las fuentes públicas son OKX, Ethereum dRPC y PublicNode. Los resultados son simulados y excluyen el capital de margen y el coste de mover inventario entre mercados.
+
 ## Reglas de alerta
 
 - **A · Pico de volumen al contado.** El volumen cotizado de la última hora alcanza el doble de la mediana horaria y el percentil 95 de los 30 días anteriores.
@@ -32,7 +40,7 @@ El umbral de resultado predeterminado es 20%. También puedes elegir 10%, 30% o 
 El primer escaneo intenta recuperar los últimos 32 días de datos al contado. Las alertas, los ajustes, la caché y los registros quedan en `data/alt_event_monitor/`. Puedes exportar alertas a CSV. La pestaña de repeticiones muestra casos cuando se añade un archivo de investigación local.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
 ```
 
 ## Licencia

@@ -21,6 +21,7 @@ from tkinter import filedialog, messagebox, ttk
 from .alt_monitor_core import BAR_MS, DAY_MS, DIRECTORY, ROOT, TOKENS, Store, now_ms, payload
 from .alt_monitor_data import Monitor, seed_local
 from .alt_monitor_i18n import GUIDE_TEXT, LANGUAGES, system_language, translate, translate_message
+from .alt_opportunity_ui import OpportunityPages
 
 BG = '#101824'
 PANEL = '#192535'
@@ -70,7 +71,7 @@ class App:
         self.chart_points = []
         self.chart_title = ''
         self.rows = dict(self.monitor.rows)
-        self.root.title(self.t('四币异动观察站 · 测试版'))
+        self.root.title(self.t('山寨币机会研究台'))
         width = min(1380, max(1060, root.winfo_screenwidth() - 80))
         height = min(920, max(720, root.winfo_screenheight() - 100))
         self.root.geometry(f'{width}x{height}')
@@ -78,6 +79,7 @@ class App:
         self.root.configure(bg=BG)
         self.root.protocol('WM_DELETE_WINDOW', self.close)
         self._style()
+        self._build_workspace()
         self._build()
         self.refresh_alerts()
         self._render_all()
@@ -97,9 +99,12 @@ class App:
         self.store.set('language', language)
         self.language = language
         tab = self.tabs.index(self.tabs.select())
-        for child in self.root.winfo_children():
+        for child in self.radar_tab.winfo_children():
             child.destroy()
-        self.root.title(self.t('四币异动观察站 · 测试版'))
+        self.root.title(self.t('山寨币机会研究台'))
+        self.workspace_title.configure(text=self.t('山寨币机会研究台'))
+        self.workspace_tabs.tab(self.radar_tab, text=self.t('异动雷达'))
+        self.opportunities.relabel()
         self._build()
         self.tabs.select(tab)
         self.refresh_alerts()
@@ -125,24 +130,36 @@ class App:
         s.configure('Treeview.Heading', background='#25364c', foreground=MUTED, padding=(5, 8))
         s.map('Treeview', background=[('selected', '#294e70')])
         s.configure('TCheckbutton', background=BG, foreground=MUTED)
+        s.configure('TEntry', fieldbackground='#223248', foreground=TEXT, insertcolor=TEXT)
         s.configure('TCombobox', fieldbackground='#223248', background='#223248', foreground=TEXT)
         s.map('TCombobox', fieldbackground=[('readonly', '#223248')], foreground=[('readonly', TEXT)])
         s.configure('Treeview.Heading', bordercolor='#384b62', lightcolor='#384b62', darkcolor='#384b62')
         self.root.option_add('*TCombobox*Listbox.background', '#223248')
         self.root.option_add('*TCombobox*Listbox.foreground', TEXT)
 
-    def _build(self):
+    def _build_workspace(self):
         outer = ttk.Frame(self.root, padding=20)
         outer.pack(fill='both', expand=True)
         header = ttk.Frame(outer)
         header.pack(fill='x')
-        ttk.Label(header, text=self.t('异动观察站'), font=('Microsoft YaHei UI', 23, 'bold')).pack(side='left')
-        ttk.Label(header, text=self.t('  RAVE / BSB / EVAA / LAB  ·  本地测试版'), style='Muted.TLabel').pack(side='left', pady=(9, 0))
-        self.mode_text = tk.StringVar(value=self.t('已暂停 · 关闭窗口即停止'))
+        self.workspace_title = ttk.Label(header, text=self.t('山寨币机会研究台'), font=('Microsoft YaHei UI', 23, 'bold'))
+        self.workspace_title.pack(side='left')
         self.language_box = ttk.Combobox(header, values=tuple(LANGUAGES.values()), state='readonly', width=12)
         self.language_box.current(tuple(LANGUAGES).index(self.language))
-        self.language_box.pack(side='right', padx=(12, 0))
+        self.language_box.pack(side='right')
         self.language_box.bind('<<ComboboxSelected>>', self.change_language)
+        self.workspace_tabs = ttk.Notebook(outer)
+        self.workspace_tabs.pack(fill='both', expand=True, pady=(14, 0))
+        self.radar_tab = ttk.Frame(self.workspace_tabs, padding=(12, 12, 12, 0))
+        self.workspace_tabs.add(self.radar_tab, text=self.t('异动雷达'))
+        self.opportunities = OpportunityPages(self.root, self.workspace_tabs, self.store, hk, self.t)
+
+    def _build(self):
+        outer = self.radar_tab
+        header = ttk.Frame(outer)
+        header.pack(fill='x')
+        ttk.Label(header, text='RAVE / BSB / EVAA / LAB', font=('Microsoft YaHei UI', 13, 'bold')).pack(side='left')
+        self.mode_text = tk.StringVar(value=self.t('已暂停 · 关闭窗口即停止'))
         if self.monitor.running:
             self.mode_text.set(self.t('监控中 · 关闭窗口即停止'))
         ttk.Label(header, textvariable=self.mode_text, foreground=GREEN).pack(side='right', pady=(9, 0))
@@ -432,12 +449,13 @@ class App:
             self.progress.set(self.t('已导出：') + path)
 
     def close(self):
+        self.opportunities.close()
         self.monitor.close()
         self.root.destroy()
 
 
 def main():
-    parser=argparse.ArgumentParser(description='四币异动观察站 · 仅公开行情')
+    parser=argparse.ArgumentParser(description='Altcoin Opportunity Research · Public market data')
     parser.add_argument('--data-dir',type=Path,default=DIRECTORY)
     parser.add_argument('--lang', choices=LANGUAGES, help='Desktop interface language')
     parser.add_argument('--scan-once',action='store_true',help='执行一次真实联网扫描后退出，不启动GUI')
@@ -463,7 +481,7 @@ def main():
             language = args.lang or (saved if saved in LANGUAGES else system_language())
             root = tk.Tk()
             root.withdraw()
-            messagebox.showinfo(translate(language, '四币异动观察站 · 测试版'),
+            messagebox.showinfo(translate(language, '山寨币机会研究台'),
                                 translate(language, '程序已经运行，请从任务栏打开现有窗口。'))
             root.destroy()
             return
