@@ -1,8 +1,8 @@
-# Altcoin Event Monitor
+# Altcoin Opportunity Research
 
 [简体中文](README.md) · English · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md)
 
-A Windows desktop monitor for RAVE, BSB, EVAA and LAB. It reads Binance Alpha and public Binance derivatives data and uses no account or API key. Start it manually to scan every five minutes. The app saves volume and price alerts and follows observed outcomes over 3, 7 and 14 days.
+A read-only Windows research app for altcoin alerts, funding and basis, on-chain spreads, and LP hedge replay. The event radar monitors RAVE, BSB, EVAA and LAB, and tracks alert outcomes over 3, 7 and 14 days. The app uses public data without an account or trading API key.
 
 ## Install and run
 

@@ -1,8 +1,8 @@
-# Monitor de anomalías en altcoins
+# Análisis de oportunidades en altcoins
 
 [简体中文](README.md) · [English](README.en.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · Español
 
-Herramienta de escritorio para Windows que sigue RAVE, BSB, EVAA y LAB. Consulta datos públicos de Binance Alpha y de derivados de Binance, sin cuenta ni clave de API. Tras el inicio manual, escanea cada cinco minutos. Guarda las alertas de volumen y precio y sigue sus resultados a 3, 7 y 14 días.
+Herramienta de investigación para Windows con alertas de altcoins, financiación y base, diferenciales en cadena y simulación de cobertura LP. El radar sigue RAVE, BSB, EVAA y LAB y registra los resultados de las alertas a 3, 7 y 14 días. Usa datos públicos de solo lectura, sin cuenta ni clave de API de trading.
 
 ## Instalación y uso
 

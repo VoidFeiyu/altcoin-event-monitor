@@ -1,8 +1,8 @@
-# 알트코인 이상 움직임 모니터
+# 알트코인 기회 분석
 
 [简体中文](README.md) · [English](README.en.md) · [日本語](README.ja.md) · 한국어 · [Español](README.es.md)
 
-RAVE, BSB, EVAA, LAB을 감시하는 Windows 데스크톱 도구입니다. Binance Alpha 현물과 Binance 공개 파생상품 데이터를 읽으며 계정이나 API 키가 필요 없습니다. 수동으로 시작하면 5분마다 스캔하고 거래량과 가격 이상을 기록한 뒤 3일, 7일, 14일 결과를 추적합니다.
+알트코인 이상 움직임, 펀딩비와 베이시스, 온체인 가격차, LP 헤지 재현을 살펴보는 Windows 연구 도구입니다. 레이더는 RAVE, BSB, EVAA, LAB을 감시하고 알림 이후 3일, 7일, 14일 결과를 추적합니다. 공개 데이터를 읽으며 계정이나 거래 API 키가 필요 없습니다.
 
 ## 설치 및 실행
 
