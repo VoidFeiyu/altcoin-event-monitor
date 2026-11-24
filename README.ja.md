@@ -24,6 +24,10 @@ py -3.12 -m venv .venv
 
 最初の2ページは手動取得と5分間隔の取得に対応します。選択した根拠は各ページからJSONで出力できます。データはOKX、Ethereum dRPC、PublicNodeの公開APIから取得します。損益は模擬計算で、証拠金拘束と市場間の資産移動費用は計上しません。
 
+## EVAAイベント検証
+
+EVAA通知を選び、カードの「検証」を開きます。直近の完了区間も選べます。通知足の確定前後3・5・10分で、BNB ChainのUniswap v3 0.30%とPancakeSwap v3 0.01%のEVAA/USDTプールを比較します。同じEVAA数量で3ブロックの買い・売りを見積もり、プール手数料と価格影響を含めます。ガス代は含みません。スワップと流動性の追加・削除には取引ハッシュが付きます。取得できない過去の見積もりは欠損として表示し、結果をJSONで出力できます。
+
 ## 通知ルール
 
 - **A · 現物出来高急増。** 直近1時間の売買代金が過去30日間の時間別中央値の2倍以上かつ95パーセンタイル以上。
@@ -40,7 +44,7 @@ py -3.12 -m venv .venv
 初回スキャンで直近32日間の現物データの補完を試みます。通知、設定、市場データのキャッシュ、ログは `data/alt_event_monitor/` に保存されます。通知はCSVに出力できます。過去のリプレイ一覧には、ローカルの調査アーカイブがある場合に事例が表示されます。
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
 ```
 
 ## ライセンス

@@ -22,6 +22,7 @@ from .alt_monitor_core import BAR_MS, DAY_MS, DIRECTORY, ROOT, TOKENS, Store, no
 from .alt_monitor_data import Monitor, seed_local
 from .alt_monitor_i18n import GUIDE_TEXT, LANGUAGES, system_language, translate, translate_message
 from .alt_opportunity_ui import OpportunityPages
+from .evaa_replay_ui import EvaaReplayPage
 
 BG = '#101824'
 PANEL = '#192535'
@@ -104,6 +105,8 @@ class App:
         self.root.title(self.t('山寨币机会研究台'))
         self.workspace_title.configure(text=self.t('山寨币机会研究台'))
         self.workspace_tabs.tab(self.radar_tab, text=self.t('异动雷达'))
+        self.workspace_tabs.tab(self.evaa_tab, text=self.t('EVAA 事件回放'))
+        self.evaa_replay.relabel()
         self.opportunities.relabel()
         self._build()
         self.tabs.select(tab)
@@ -123,6 +126,7 @@ class App:
         s.map('TButton', background=[('active', '#365674')], foreground=[('disabled', '#728399')])
         s.configure('Primary.TButton', background='#296da6', foreground='white')
         s.map('Primary.TButton', background=[('active', '#3686c8')])
+        s.configure('Card.TButton', padding=(5, 2), font=('Microsoft YaHei UI', 9))
         s.configure('TNotebook', background=BG, borderwidth=0)
         s.configure('TNotebook.Tab', padding=(18, 8), background='#213046', foreground=MUTED)
         s.map('TNotebook.Tab', background=[('selected', PANEL)], foreground=[('selected', TEXT)])
@@ -152,7 +156,21 @@ class App:
         self.workspace_tabs.pack(fill='both', expand=True, pady=(14, 0))
         self.radar_tab = ttk.Frame(self.workspace_tabs, padding=(12, 12, 12, 0))
         self.workspace_tabs.add(self.radar_tab, text=self.t('异动雷达'))
+        self.evaa_tab = ttk.Frame(self.workspace_tabs, padding=12)
+        self.workspace_tabs.add(self.evaa_tab, text=self.t('EVAA 事件回放'))
+        self.evaa_replay = EvaaReplayPage(self.root, self.evaa_tab, self.store, hk, self.t)
+        self.workspace_tabs.bind('<<NotebookTabChanged>>', self._refresh_workspace)
         self.opportunities = OpportunityPages(self.root, self.workspace_tabs, self.store, hk, self.t)
+
+    def _refresh_workspace(self, event=None):
+        if self.workspace_tabs.select() == str(self.evaa_tab):
+            self.evaa_replay.refresh_anchors()
+
+    def open_evaa_replay(self):
+        selected = self.alert_tree.selection()
+        alert = self.alert_map.get(selected[0]) if selected else None
+        self.evaa_replay.refresh_anchors(alert['id'] if alert and alert['symbol'] == 'EVAA' else None)
+        self.workspace_tabs.select(self.evaa_tab)
 
     def _build(self):
         outer = self.radar_tab
@@ -190,8 +208,13 @@ class App:
             self.card_frame.columnconfigure(col, weight=1)
             box = tk.Frame(self.card_frame, background=PANEL, padx=14, pady=12, highlightthickness=1, highlightbackground='#2b3b50', cursor='hand2')
             box.grid(row=0, column=col, sticky='nsew', padx=(0 if col == 0 else 8, 0))
-            name = tk.Label(box, text=symbol, background=PANEL, foreground=TEXT, font=('Segoe UI', 14, 'bold'), anchor='w')
-            name.pack(fill='x')
+            title_row = tk.Frame(box, background=PANEL)
+            title_row.pack(fill='x')
+            name = tk.Label(title_row, text=symbol, background=PANEL, foreground=TEXT, font=('Segoe UI', 14, 'bold'), anchor='w')
+            name.pack(side='left')
+            if symbol == 'EVAA':
+                ttk.Button(title_row, text=self.t('链上回放'), command=self.open_evaa_replay,
+                           style='Card.TButton').pack(side='right')
             price = tk.Label(box, text='—', background=PANEL, foreground=TEXT, font=('Segoe UI', 23, 'bold'), anchor='w')
             price.pack(fill='x', pady=(7, 5))
             state = tk.Label(box, text=self.t('等待扫描'), background=PANEL, foreground=AMBER, font=('Microsoft YaHei UI', 10), anchor='w')
@@ -200,7 +223,7 @@ class App:
             metrics.pack(fill='x', pady=(6, 0))
             at = tk.Label(box, text=self.t('K线 —'), background=PANEL, foreground=MUTED, anchor='w', font=('Microsoft YaHei UI', 9))
             at.pack(fill='x', pady=(4, 0))
-            for widget in (box, name, price, state, metrics, at):
+            for widget in (box, title_row, name, price, state, metrics, at):
                 widget.bind('<Button-1>', lambda event, s=symbol: self.select_symbol(s))
             self.cards[symbol] = dict(box=box, price=price, state=state, metrics=metrics, at=at)
 
@@ -449,6 +472,7 @@ class App:
             self.progress.set(self.t('已导出：') + path)
 
     def close(self):
+        self.evaa_replay.close()
         self.opportunities.close()
         self.monitor.close()
         self.root.destroy()

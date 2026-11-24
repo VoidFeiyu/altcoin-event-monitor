@@ -24,6 +24,10 @@ Después de la instalación también puedes abrir `start-monitor.bat`. Seleccion
 
 Las dos primeras páginas admiten muestras puntuales o cada cinco minutos. Cada página permite exportar la evidencia seleccionada a JSON. Las fuentes públicas son OKX, Ethereum dRPC y PublicNode. Los resultados son simulados y excluyen el capital de margen y el coste de mover inventario entre mercados.
 
+## Eventos de EVAA
+
+Selecciona una alerta de EVAA y abre **Eventos** en su tarjeta, o usa el último intervalo completo. Elige 3, 5 o 10 minutos a cada lado del cierre de la vela de la alerta. La página compara los pools EVAA/USDT de BNB Chain en Uniswap v3 al 0,30% y PancakeSwap v3 al 0,01%. Usa la misma cantidad de EVAA para cotizar compras y ventas en tres bloques e incluye comisiones e impacto de precio. El gas se excluye. El historial guarda los hashes de swaps, aportes y retiros de liquidez. Las cotizaciones históricas ausentes se marcan y el resultado puede exportarse en JSON.
+
 ## Reglas de alerta
 
 - **A · Pico de volumen al contado.** El volumen cotizado de la última hora alcanza el doble de la mediana horaria y el percentil 95 de los 30 días anteriores.
@@ -40,7 +44,7 @@ El umbral de resultado predeterminado es 20%. También puedes elegir 10%, 30% o 
 El primer escaneo intenta recuperar los últimos 32 días de datos al contado. Las alertas, los ajustes, la caché y los registros quedan en `data/alt_event_monitor/`. Puedes exportar alertas a CSV. La pestaña de repeticiones muestra casos cuando se añade un archivo de investigación local.
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities -v
+.\.venv\Scripts\python.exe -m unittest tests.test_alt_event_monitor tests.test_alt_opportunities tests.test_evaa_replay -v
 ```
 
 ## Licencia
