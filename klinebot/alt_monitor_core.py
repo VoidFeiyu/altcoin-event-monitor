@@ -73,7 +73,14 @@ def parse_bar(row: list, asof: int) -> dict | None:
     trades = int(row[8])
     if trades < 0:
         raise ValueError('成交笔数异常')
-    return dict(end_ms=end, open=o, high=h, low=l, close=c, base=base, quote=quote, trades=trades)
+    try:
+        taker_quote = float(row[10])
+    except (TypeError, ValueError):
+        taker_quote = None
+    if taker_quote is not None and not 0 <= taker_quote <= quote:
+        taker_quote = None
+    return dict(end_ms=end, open=o, high=h, low=l, close=c, base=base, quote=quote, trades=trades,
+                taker_quote=taker_quote)
 
 
 class Store:
@@ -87,7 +94,7 @@ class Store:
                 PRAGMA journal_mode=WAL;
                 CREATE TABLE IF NOT EXISTS bars(
                     symbol TEXT, end_ms INTEGER, open REAL, high REAL, low REAL, close REAL,
-                    base REAL, quote REAL, trades INTEGER, source TEXT,
+                    base REAL, quote REAL, trades INTEGER, source TEXT, taker_quote REAL,
                     PRIMARY KEY(symbol,end_ms));
                 CREATE TABLE IF NOT EXISTS oi(symbol TEXT,time_ms INTEGER,quantity REAL,source TEXT,
                     PRIMARY KEY(symbol,time_ms));
@@ -101,7 +108,12 @@ class Store:
                 CREATE INDEX IF NOT EXISTS alert_symbol_time ON alerts(symbol,bar_ms DESC);
                 CREATE TABLE IF NOT EXISTS outcomes(alert_id TEXT,hours INTEGER,result TEXT,
                     PRIMARY KEY(alert_id,hours));
+                CREATE TABLE IF NOT EXISTS radar_books(pair TEXT, time_ms INTEGER, data TEXT,
+                    PRIMARY KEY(pair,time_ms));
             ''')
+            db.execute('BEGIN IMMEDIATE')
+            if not any(row['name']=='taker_quote' for row in db.execute('PRAGMA table_info(bars)')):
+                db.execute('ALTER TABLE bars ADD COLUMN taker_quote REAL')
 
     @contextmanager
     def connect(self):
@@ -131,9 +143,21 @@ class Store:
         if not rows:
             return
         with self.connect() as db:
-            db.executemany('INSERT OR REPLACE INTO bars VALUES(?,?,?,?,?,?,?,?,?,?)', [
-                (symbol, r['end_ms'], r['open'], r['high'], r['low'], r['close'], r['base'], r['quote'], r['trades'], source)
+            db.executemany('''INSERT OR REPLACE INTO bars
+                (symbol,end_ms,open,high,low,close,base,quote,trades,source,taker_quote) VALUES(?,?,?,?,?,?,?,?,?,?,?)''', [
+                (symbol, r['end_ms'], r['open'], r['high'], r['low'], r['close'], r['base'], r['quote'], r['trades'],
+                 source, r.get('taker_quote'))
                 for r in rows])
+
+    def save_book(self, pair, row):
+        with self.connect() as db:
+            db.execute('INSERT OR REPLACE INTO radar_books VALUES(?,?,?)', (pair,row['at'],payload(row)))
+            db.execute('DELETE FROM radar_books WHERE pair=? AND time_ms<?', (pair,row['at']-DAY_MS))
+
+    def books(self, pair, limit=12):
+        with self.connect() as db:
+            rows = db.execute('SELECT data FROM radar_books WHERE pair=? ORDER BY time_ms DESC LIMIT ?', (pair,limit)).fetchall()
+        return [json.loads(row['data']) for row in rows]
 
     def save_oi(self, symbol: str, rows: list[tuple], source='public-api'):
         with self.connect() as db:
@@ -154,9 +178,9 @@ class Store:
 
     def bars(self, symbol: str, start: int = 0, end: int | None = None) -> pd.DataFrame:
         with self.connect() as db:
-            rows = db.execute('SELECT end_ms,open,high,low,close,base,quote,trades FROM bars WHERE symbol=? AND end_ms>=? AND end_ms<=? ORDER BY end_ms',
+            rows = db.execute('SELECT end_ms,open,high,low,close,base,quote,trades,taker_quote FROM bars WHERE symbol=? AND end_ms>=? AND end_ms<=? ORDER BY end_ms',
                               (symbol, int(start), int(end or 9_000_000_000_000))).fetchall()
-        cols = ['end_ms', 'open', 'high', 'low', 'close', 'base', 'quote', 'trades']
+        cols = ['end_ms', 'open', 'high', 'low', 'close', 'base', 'quote', 'trades', 'taker_quote']
         d = pd.DataFrame([tuple(r) for r in rows], columns=cols)
         if d.empty:
             return pd.DataFrame(columns=cols[1:], index=pd.DatetimeIndex([], tz='UTC'))
@@ -172,7 +196,7 @@ class Store:
         return series, fund
 
     def record(self, symbol: str, model: str, at: int, observed: int, price: float, threshold: float, evidence: dict) -> str | None:
-        valid_market = self.allow_market_pairs and re.fullmatch(r'(?:ALPHA_\d+(?:USDT|USDC|U)|SPOT:[^\s:]{1,48})', symbol)
+        valid_market = self.allow_market_pairs and re.fullmatch(r'(?:ALPHA_\d+(?:USDT|USDC|U)|SPOT:[^\s:/?#]{1,48})',symbol)
         if (symbol not in TOKENS and not valid_market) or model not in ('ae', 'core') or at % BAR_MS or at > observed:
             raise ValueError('预警身份或时间无效')
         if not math.isfinite(price) or price <= 0 or threshold not in (.1, .2, .3, .5):

@@ -4,6 +4,12 @@
 
 Herramienta para Windows con alertas, financiación, base, diferenciales en cadena y simulación LP. Busca activos de Binance Spot y Alpha, vigila favoritos o recorre el catálogo y sigue alertas a 3, 7 y 14 días. Usa datos públicos sin cuenta ni clave de trading.
 
+## Radar web
+
+Tras instalar las dependencias, abre `start-monitor.bat` o ejecuta `python -m klinebot.alpha_web --open` y visita el [radar local](http://127.0.0.1:8769/alpha).
+
+La interfaz de escritorio se abre con el comando de la sección siguiente.
+
 ## Instalación y uso
 
 Descarga el código e instala Python 3.12 con Tcl/Tk. Abre PowerShell desde el directorio del proyecto y ejecuta estos comandos.
@@ -14,7 +20,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m klinebot.alt_monitor_app
 ```
 
-Después de la instalación también puedes abrir `start-monitor.bat`. Selecciona Español en el menú de idioma para guardar tu preferencia. Pulsa **Iniciar monitor** para activar los escaneos periódicos o **Escanear ahora** para hacer solo uno. Al cerrar la ventana se detiene el monitor.
+Selecciona Español en el menú de idioma para guardar tu preferencia. Pulsa **Iniciar monitor** para activar los escaneos periódicos o **Escanear ahora** para hacer solo uno. Al cerrar la ventana se detiene el monitor.
 
 ## Análisis de oportunidades
 

@@ -1,0 +1,1614 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>山寨币暴涨暴跌观察</title>
+<style data-embedded="signal_card.css">
+.signal-unseen[data-review-signal] {
+  background: #fff8eb;
+  border-color: #d9ae70;
+  box-shadow: inset 4px 0 #b47926;
+}
+
+.signal-card-meta { position: relative; padding-right: 51px; }
+.signal-unseen-badge { display: none; position: absolute; top: 0; right: 0; }
+.signal-unseen .signal-unseen-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #f3e1bf;
+  color: #664417;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.signal-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 9px 0;
+}
+
+.signal-metrics > div {
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid #d8e4e2;
+  border-radius: 5px;
+  background: #f2f7f6;
+}
+
+.signal-metrics span { display: block; color: #435c5f; font-size: 12px; }
+.signal-metrics strong {
+  display: block;
+  color: #183f3b;
+  font-size: 22px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.signal-metrics small { color: #52696a; font-size: 12px; font-weight: 500; }
+.signal-metrics > .signal-ratio-low { background: #fff2ec; border-color: #ead0c4; }
+.signal-ratio-low strong, .signal-ratio-low strong small { color: #964428; }
+
+.signal-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; }
+.signal-card-actions .signal-mark-button {
+  margin-inline-start: auto;
+  min-width: 76px;
+  padding: 4px 8px;
+  color: #355b76;
+  font-size: 12px;
+  font-weight: 650;
+}
+.signal-mark-button[aria-pressed="true"] {
+  color: #1c4d70;
+  background: #e4effa;
+  border-color: #8aaec9;
+}
+.signal-mark-button[aria-pressed="true"]::before { content: '★ '; }
+
+.signal-status {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 650;
+  white-space: nowrap;
+  color: #45565c;
+  background: #e9eeee;
+}
+.signal-status--waiting { color: #764c0a; background: #ffedbb; }
+.signal-status--open { color: #1c5190; background: #e1eeff; }
+.signal-status--profit { color: #1b6243; background: #e1f3e8; }
+.signal-status--loss { color: #943a29; background: #fae6e2; }
+.signal-status--invalid { color: #8d421a; background: #ffe9da; }
+.signal-status--uncertain { color: #604386; background: #efe7fa; }
+
+.signal-nav { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.signal-nav a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 2px; }
+.signal-status-notice {
+  position: fixed;
+  z-index: 10;
+  right: 18px;
+  bottom: 18px;
+  box-sizing: border-box;
+  width: min(350px, calc(100% - 36px));
+  padding: 14px;
+  border: 1px solid #86b19e;
+  border-radius: 8px;
+  background: #f7fcfa;
+  color: #183f3b;
+  box-shadow: 0 5px 24px #203b3926;
+}
+.signal-status-notice p { margin: 6px 0 10px; }
+.signal-status-notice div { display: flex; gap: 12px; align-items: center; }
+</style>
+<style>
+:root{color-scheme:light;--ink:#172b2e;--muted:#52676a;--border:#d4e0de;--teal:#006558;--bg:#eef3f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:25px clamp(12px,4vw,36px)}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}h1{font-size:clamp(23px,4vw,34px);margin:0}h2{margin:0;font-size:19px}a{color:var(--teal)}.sub,.small{color:var(--muted);font-size:13px}.toolbar,.filters,.pager{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}button,input,select{font:inherit;padding:7px;color:var(--ink);background:white;border:1px solid #a5bcb8;border-radius:5px}button{cursor:pointer;color:var(--teal)}button:disabled{opacity:.45;cursor:default}.danger,.bad,.down{color:#a34032}.up,.ready{color:#16624a}.warm{color:#785816}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:13px 0}.stats div{background:#fbfdfc;border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--muted)}.stats strong{display:block;color:var(--ink);font-size:21px}.section{background:#fbfdfc;border:1px solid var(--border);border-radius:9px;margin:16px 0;padding:14px}.table-frame{overflow:auto}table{width:100%;border-collapse:collapse;white-space:nowrap}th,td{text-align:left;border-bottom:1px solid var(--border);padding:9px 8px}th{font-size:13px;color:var(--muted)}td{font-variant-numeric:tabular-nums}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:9px;margin-top:10px}.alert{background:white;border:1px solid var(--border);padding:11px;border-radius:7px}.alert h3{margin:0 0 5px;font-size:16px}.alert p{margin:7px 0 0}.alert .outcomes{border-top:1px solid var(--border);margin-top:8px;padding-top:6px}.code{display:block;font-size:12px;color:var(--muted)}.pager{justify-content:flex-end}
+</style>
+<style>
+main{max-width:1380px}.score-value{display:block;font-size:17px;font-weight:650;font-variant-numeric:tabular-nums}.score-parts{display:block;font-size:12px;color:var(--muted);margin-top:3px}.score-note{padding:10px 13px;background:#e6eeec;border-radius:6px;font-size:13px;line-height:1.7}.score-note p{margin:6px 0}.score-note summary{cursor:pointer}.score-label{color:var(--muted);font-size:12px;font-weight:400}.alert-score{padding:8px 0;border-top:1px solid var(--border);margin-top:8px}.alert-score .score-value{font-size:16px}
+</style>
+<style>
+[hidden]{display:none!important}.signal-group{border:1px solid var(--border);border-radius:8px;margin:12px 0;background:white}.signal-group>summary{padding:13px 15px;cursor:pointer;font-weight:650}.signal-group>summary .small{font-weight:400;margin-left:9px}.group-content{padding:0 13px 13px}.coin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:9px}.coin-card{display:block;border:1px solid var(--border);border-radius:7px;padding:13px;color:var(--ink);text-decoration:none;background:#f9fcfb}.coin-card:hover,.coin-card:focus-visible{border-color:var(--teal);box-shadow:0 2px 8px #00655815}.coin-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.coin-card h3{margin:0;font-size:17px}.coin-price{font-weight:650;font-size:21px;margin:8px 0}.coin-card p{margin:5px 0}.coin-score{display:flex;gap:16px;flex-wrap:wrap;font-size:13px}.tag{display:inline-block;background:#e6eeec;color:#285a51;font-size:12px;padding:3px 7px;border-radius:4px;margin:4px 4px 0 0}.group-empty{color:var(--muted);font-size:13px;margin:0}.more-coins{margin-top:10px}.table-toggle>summary{cursor:pointer;padding:12px 0;color:var(--teal)}.detail-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:18px 0}.detail-top h2{font-size:30px;margin:8px 0}.detail-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.detail-columns .section{margin:0}.analysis-text{line-height:1.85}.analysis-text p{margin:8px 0}.chart-panel svg{display:block;width:100%;height:auto;min-height:230px}.chart-panel .filters{justify-content:space-between}.detail-levels td{white-space:normal}.detail-table td{white-space:normal;min-width:90px}.detail-table td:nth-child(2){min-width:150px}.status-pass{color:#16624a}.status-fail{color:#785816}.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:9px;margin:14px 0}.metric{padding:13px;background:white;border:1px solid var(--border);border-radius:7px}.metric strong{display:block;font-size:21px;margin:7px 0;overflow-wrap:anywhere}.metric .small{line-height:1.6}.detail-scores{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.detail-scores>div{background:#edf3f1;padding:12px;border-radius:6px}.detail-scores .score-value{font-size:25px}.source-block{line-height:1.9;overflow-wrap:anywhere}@media(max-width:800px){.detail-columns{grid-template-columns:1fr}.detail-scores{grid-template-columns:1fr}.coin-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
+</style>
+<style>
+.chart-panel canvas{display:block;width:100%;height:clamp(300px,38vw,470px);cursor:crosshair;touch-action:pan-y}
+.chart-panel canvas.dragging{cursor:grabbing}
+.chart-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chart-controls button{min-width:34px}.chart-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:5px 0}
+.coin-markets{display:flex;flex-wrap:wrap;gap:10px}.coin-market{display:block;min-width:190px;padding:9px 13px;border:1px solid var(--border);background:white;border-radius:6px;text-decoration:none}.coin-market[aria-current="true"]{border-color:var(--teal);box-shadow:inset 0 -2px var(--teal)}.coin-market small{display:block;margin-top:4px;color:var(--muted)}.record-panel{margin-bottom:14px}.record-panel h3{margin:0 0 8px;font-size:16px}.record-active{border-color:var(--teal);background:#eff7f4}
+#detailView{overflow-anchor:none}.record-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 14px}
+.chart-panel canvas[hidden]{display:none}
+.candle-readout{min-height:2.8em;line-height:1.55;margin:6px 0;font-variant-numeric:tabular-nums}
+.chart-marker-label::before{content:'';display:inline-block;width:.65em;height:.65em;margin-right:.35em;border-radius:2px;background:currentColor}
+.chart-event-readout{margin:3px 0 7px;min-height:1.4em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.observation-tag{background:#e7eef8;color:#244f80}
+.observation-tag.risk{background:#fae9e1;color:#893a21}
+.observation-tag.upside{background:#e3f2e9;color:#1f6546}
+.observation-prices{font-variant-numeric:tabular-nums}
+.market-tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:6px 0 10px;margin-bottom:12px}
+.market-tabs button{padding:7px 13px;border-color:transparent;background:transparent}
+.market-tabs button[aria-pressed="true"]{background:var(--teal);color:#fff;border-color:var(--teal);font-weight:650}
+.market-filters{align-items:end}.market-filters label{display:grid;gap:4px;color:var(--muted);font-size:13px}
+.market-filters :is(input,select){min-height:36px}.market-filter-search{flex:1 1 210px;min-width:0}
+.market-filter-search input{width:100%;min-width:0}.advanced-filters{margin:0 0 10px}
+.advanced-filters>summary{color:var(--teal);cursor:pointer;font-size:13px}
+.market-venue{font-size:12px;color:var(--muted)}
+.alerts-view .market-only-filter{display:none}
+.workspace-tools{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.workspace-tools .score-note{margin-left:auto;max-width:500px;padding:5px 10px}.workspace-tools .toolbar{margin:0}
+[data-radar-only="true"] .strategy-only{display:none!important}
+.detail-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.evidence-panel>summary{cursor:pointer;font-weight:650}.evidence-panel[open]>summary{margin-bottom:12px}
+@media(max-width:550px){.workspace-tools .score-note{margin-left:0}.market-tabs button{padding-inline:9px}main{padding:16px 12px}}
+</style>
+</head>
+<body><main>
+<header><h1 id="pageTitle">山寨币暴涨暴跌观察</h1>
+  <nav class="signal-nav strategy-only" aria-label="监控页面"><a href="/">返回 PA／ICT／A2</a><a href="/#/marked">已标记信号</a></nav>
+</header>
+<p class="sub" id="feedStatus" role="status">正在读取币安现货与 Alpha 行情目录…</p>
+<div id="homeView">
+<div id="summary" class="stats" aria-label="扫描进度"></div>
+<div class="workspace-tools">
+<div class="toolbar" aria-label="扫描控制">
+  <button type="button" id="pause" disabled>暂停扫描</button>
+  <label>结果追踪门槛 <select id="threshold" disabled><option value=".1">±10%</option><option value=".2">±20%</option><option value=".3">±30%</option><option value=".5">±50%</option></select></label>
+  <button type="button" id="clear" class="danger" disabled>清空预警</button>
+  <span class="small" id="message" role="status"></span>
+</div>
+<details class="score-note">
+  <summary>研究评分 v0.1 · 0—100 分 · 不是成功概率，不决定预警触发</summary>
+  <p>价量版：放量 A 60 分、价格异常 E 40 分。完整版：A 35 分、OI 增仓 OB 25 分、已结算费率异常 C 15 分、E 25 分。</p>
+  <p>A／OB／E 达到原触发线拿该项一半分，达到两倍触发线拿满分；C 保留原异常条件。分数描述当前证据强度，历史回测尚未证明分数越高、后续大变动越可靠。未触发预警时也可显示分数。</p>
+  <p>历史不足、行情过期或当前没有实际成交时不评分。OI／费率不足时完整版显示缺失，价量版独立计算。预警卡记录触发时的冻结分数；旧预警没有记录评分时保留缺失。</p>
+</details>
+</div>
+<section class="section" aria-label="币种筛选与扫描列表">
+  <h2>市场监测</h2>
+  <div class="filters market-filters">
+    <label class="market-filter-search">搜索币种 <input type="search" id="query" placeholder="代码、名称、市场 ID 或合约地址"></label>
+    <label>市场来源 <select id="sourceFilter"><option value="">全部市场</option><option value="spot">币安现货</option><option value="alpha">币安 Alpha</option></select></label>
+    <label class="market-sort">范围 <select id="watchFilter"><option value="">全部标的</option><option value="watch">自选</option></select></label>
+    <label id="marketSort">排序 <select id="sort"><option value="symbol">币种</option><option value="ae_score">价量研究分 ↓</option><option value="core_score">完整研究分 ↓</option><option value="move">绝对涨跌幅</option><option value="new">最近核对</option></select></label>
+  </div>
+  <details class="advanced-filters" id="advancedFilters"><summary>更多筛选</summary><div class="filters">
+    <label>方向 <select id="direction"><option value="">全部</option><option value="1">上涨</option><option value="-1">下跌</option></select></label>
+    <label class="market-only-filter">基准 <select id="readiness"><option value="">全部</option><option value="ready">价量已就绪</option><option value="warming">等待／准备基准</option><option value="error">缺口／接口异常</option></select></label>
+    <label class="market-only-filter">信号 <select id="signalGroup"><option value="">全部分类</option><option value="both">价量与完整版共振</option><option value="ae">价量共振</option><option value="core">完整版共振</option><option value="volume">现货放量</option><option value="price">价格异常</option><option value="derivatives">持仓／费率异常</option><option value="normal">正常观察</option><option value="warming">基准不足／无成交</option><option value="error">数据异常／过期</option></select></label>
+    <label class="market-only-filter">观察规则 <select id="observationFilter"></select></label>
+  </div></details>
+  <nav class="market-tabs" aria-label="市场监测视图">
+    <button type="button" id="showGroups" aria-controls="signalGroups" aria-pressed="true">信号分类</button>
+    <button type="button" id="showMarkets" aria-controls="marketTable" aria-pressed="false">市场列表</button>
+    <button type="button" id="showAlerts" aria-controls="alertPanel" aria-pressed="false">实时预警</button>
+  </nav>
+  <div id="signalGroups" aria-label="按信号分类的币种"></div>
+  <div id="marketTable" hidden>
+  <div class="table-frame"><table>
+    <thead><tr><th scope="col">币种</th><th scope="col">计价</th><th scope="col">现货收盘价</th><th scope="col">近 1 小时</th><th scope="col">量比</th><th scope="col">价量研究分</th><th scope="col">完整研究分</th><th scope="col">扫描状态</th><th scope="col">行情时间（香港）</th></tr></thead>
+    <tbody id="markets"></tbody>
+  </table></div>
+  <div class="pager"><span class="small" id="pageLabel"></span><button type="button" id="prev">上一页</button><button type="button" id="next">下一页</button></div>
+  </div>
+  <div id="alertPanel" hidden aria-label="实时异动预警">
+  <p id="alertCount" class="small"></p>
+  <div class="grid" id="alerts"></div>
+  </div>
+</section>
+</div>
+<section id="detailView" hidden aria-label="币种详情">
+  <div class="detail-top"><div><a id="detailBack" href="#/">← 返回市场监测</a><h2 id="detailTitle">币种详情</h2><p class="small" id="detailIdentity"></p></div><div class="detail-actions"><span class="small" id="detailTiming"></span><button type="button" id="watchMarket" hidden>加入自选</button><span class="small" id="watchFeedback" role="status"></span></div></div>
+  <nav class="coin-markets" id="detailMarkets" aria-label="币种市场"></nav>
+  <p id="detailFeedback" class="warm" role="status">正在读取币种数据…</p>
+  <div id="detailMetrics" class="metric-grid"></div>
+  <section class="section chart-panel"><div class="filters"><h2 id="chartTitle">现货 K 线与成交额</h2><div class="chart-controls"><label>范围 <select id="detailDays"><option value="1">24 小时</option><option value="3" selected>3 天</option><option value="7">7 天</option><option value="30">30 天</option></select></label><button id="chartZoomIn" type="button" aria-label="放大 K 线">＋</button><button id="chartZoomOut" type="button" aria-label="缩小 K 线">−</button><button id="chartReset" type="button">复位</button><button id="chartSignal" type="button" hidden>跳到信号</button></div></div>
+    <div class="small chart-legend" id="chartLegend"></div>
+    <p class="small candle-readout" id="candleReadout"></p>
+    <p class="small chart-event-readout" id="chartEventReadout" hidden></p>
+    <canvas id="detailChart" hidden tabindex="0" aria-label="K 线与信号标记。使用左右方向键查看每根 K 线。" aria-describedby="candleReadout chartEventReadout chartCaption"></canvas>
+    <p class="small" id="chartCaption"></p></section>
+  <div class="detail-columns"><section class="section"><h2 id="analysisTitle">当前判断与研究评分</h2><div id="detailAnalysis" class="analysis-text"></div><div id="detailScores" class="detail-scores"></div></section>
+  <section class="section"><h2 id="levelsTitle">市场参考价位</h2><div id="detailLevels"></div><p class="small" id="levelsHint">历史市场成交参考。</p></section></div>
+  <section class="section" id="rulesSection"><h2>逐项证据与判断标准</h2><div id="detailRules" class="table-frame detail-table"></div></section>
+  <details class="section evidence-panel" id="frozenEvidence" hidden open><summary>预警触发时的证据</summary><div id="frozenRules" class="table-frame detail-table"></div></details>
+  <details class="section evidence-panel" id="flowEvidence" hidden><summary>主动成交与大盘对照</summary><div id="detailFlow" class="metric-grid"></div></details>
+  <details class="section evidence-panel" id="depthEvidence" hidden><summary>盘口价差与 ±1% 深度</summary><p class="small" id="depthStatus"></p><div id="detailDepth" class="table-frame"></div></details>
+  <details class="section evidence-panel" id="chainEvidence" hidden><summary>链上成交与流动性</summary><div class="detail-actions"><button id="loadChain" type="button">读取链上事件</button><span id="chainStatus" class="small" role="status"></span></div><div id="detailChain" class="table-frame"></div></details>
+  <section class="section" id="observationSection" hidden>
+    <h2>启动与回撤观察</h2>
+    <p class="small" id="observationFeedback"></p>
+    <div class="table-frame detail-table" id="observationRules"></div>
+    <p class="small observation-prices" id="observationLevels" hidden></p>
+  </section>
+  <section class="section" id="alertsSection"><div class="record-heading"><h2>预警记录与后续结果</h2><span id="detailSwitchStatus" class="small" role="status"></span></div><div class="record-panel strategy-only" id="contractRecordsPanel" hidden><h3>PA／ICT／A2 信号</h3><div id="contractRecords" class="grid"></div></div><div id="spotRecordsPanel"><p id="detailAlertCount" class="small"></p><div id="detailAlerts" class="grid"></div></div></section>
+  <section class="section"><h2>数据与可用范围</h2><div id="detailSource" class="source-block small"></div></section>
+</section>
+<aside id="signalStatusNotice" class="signal-status-notice strategy-only" aria-label="标记信号状态更新" hidden>
+  <strong>标记信号状态更新</strong>
+  <p id="signalStatusNoticeText" role="status"></p>
+  <div><a href="/#/marked/alerts" id="viewSignalActivity">查看提醒</a><button type="button" id="dismissSignalNotice">关闭</button></div>
+</aside>
+</main>
+<script data-embedded="signal_card.js">
+(() => {
+  'use strict';
+
+  const storageKey = 'pa-ict-a2:reviewed-signals:v1';
+  const markPrefix = 'pa-ict-a2:marked-signal:v1:';
+  const activityKey = 'pa-ict-a2:signal-status-activity:v1';
+  const selector = '[data-review-signal]';
+  const validId = id => typeof id === 'string' && /^[a-f0-9]{24}$/.test(id);
+  const badge = '<span class="signal-unseen-badge">未查看</span>';
+  const reviewed = new Set();
+  const temporaryMarks = new Map();
+  const changeListeners = new Set();
+  let temporaryActivity;
+  let statusRequest;
+
+  const statuses = new Map([
+    ['pending', ['待触发', 'waiting']],
+    ['triggered', ['已触发', 'open']],
+    ['tp1', ['已止盈一', 'profit']],
+    ['take_profit', ['已止盈', 'profit']],
+    ['tp2', ['已止盈二', 'profit']],
+    ['stop_loss', ['已止损', 'loss']],
+    ['tp1_then_stop', ['止盈一后止损', 'loss']],
+    ['expired', ['未触发已过期', 'inactive']],
+    ['invalidated', ['触发前失效', 'invalid']],
+    ['ambiguous', ['同分钟顺序不明', 'uncertain']],
+    ['removed', ['已停止跟踪', 'inactive']],
+    ['demo', ['演示', 'inactive']],
+  ]);
+  const statusLabel = status => statuses.get(status)?.[0] || '状态未知';
+  const escape = value => String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char]);
+
+  function statusBadge(status, label = statusLabel(status)) {
+    const tone = statuses.get(status)?.[1] || 'inactive';
+    return `<span class="signal-status signal-status--${tone}">${escape(label)}</span>`;
+  }
+
+  function loadReviewed() {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(storageKey) || '[]');
+      if (Array.isArray(saved)) for (const id of saved) if (validId(id)) reviewed.add(id);
+    } catch {
+      // The current page still tracks reviewed cards when storage is unavailable.
+    }
+  }
+
+  function unseen(id) {
+    return validId(id) && !reviewed.has(id);
+  }
+
+  function updateReview(card) {
+    card.classList.toggle('signal-unseen', unseen(card.dataset.reviewSignal));
+  }
+
+  function readMark(id) {
+    if (!validId(id)) return null;
+    if (temporaryMarks.has(id)) return temporaryMarks.get(id);
+    try {
+      const value = window.localStorage.getItem(markPrefix + id);
+      return value === '1' ? {} : JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  function saveMark(id, mark) {
+    try {
+      if (mark) window.localStorage.setItem(markPrefix + id, JSON.stringify(mark));
+      else window.localStorage.removeItem(markPrefix + id);
+      temporaryMarks.delete(id);
+    } catch {
+      temporaryMarks.set(id, mark);
+    }
+  }
+
+  const isMarked = id => Boolean(readMark(id));
+  const onChange = listener => changeListeners.add(listener);
+  const notify = type => changeListeners.forEach(listener => listener(type));
+
+  function markedEntries() {
+    const ids = new Set(temporaryMarks.keys());
+    try {
+      const storage = window.localStorage;
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key?.startsWith(markPrefix)) ids.add(key.slice(markPrefix.length));
+      }
+    } catch {
+      // Marks remain available for this page when browser storage is blocked.
+    }
+    return [...ids].map(id => [id, readMark(id)]).filter(([, mark]) => mark);
+  }
+
+  const markLabel = marked => marked ? '取消标记' : '标记';
+
+  function markButton(id, marked = isMarked(id)) {
+    if (!validId(id)) return '';
+    return `<button type="button" class="signal-mark-button" data-toggle-signal-mark aria-pressed="${marked}">${markLabel(marked)}</button>`;
+  }
+
+  function updateMark(card) {
+    const button = card.querySelector('[data-toggle-signal-mark]');
+    if (!button) return;
+    const marked = isMarked(card.dataset.reviewSignal);
+    button.setAttribute('aria-pressed', String(marked));
+    if (button.textContent !== markLabel(marked)) button.textContent = markLabel(marked);
+  }
+
+  function updateCard(card) {
+    updateReview(card);
+    updateMark(card);
+  }
+
+  function toggleMark(card) {
+    const id = card?.dataset.reviewSignal;
+    if (!validId(id)) return;
+    const status = card.dataset.signalStatus;
+    saveMark(id, isMarked(id) ? null : {
+      status: statuses.has(status) ? status : '',
+      at: Number(card.dataset.signalStatusAt) || 0,
+    });
+    for (const node of document.querySelectorAll(selector)) {
+      if (node.dataset.reviewSignal === id) updateMark(node);
+    }
+    notify('marks');
+  }
+
+  function parseActivity(value) {
+    try {
+      const history = JSON.parse(value);
+      return Array.isArray(history) ? history : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function activity() {
+    if (temporaryActivity) return temporaryActivity;
+    try {
+      return parseActivity(window.localStorage.getItem(activityKey));
+    } catch {
+      return [];
+    }
+  }
+
+  function saveActivity(history) {
+    try {
+      window.localStorage.setItem(activityKey, JSON.stringify(history));
+      temporaryActivity = undefined;
+    } catch {
+      temporaryActivity = history;
+    }
+    notify('activity');
+  }
+
+  function showNotice(events) {
+    if (!events.length) return;
+    const notice = document.getElementById('signalStatusNotice');
+    if (!notice) return;
+    const event = events[0];
+    notice.hidden = false;
+    document.getElementById('signalStatusNoticeText').textContent =
+      `${event.symbol} · ${event.module} · ${statusLabel(event.from)} → ${statusLabel(event.to)}` +
+      (events.length > 1 ? `，另有 ${events.length - 1} 条更新` : '');
+  }
+
+  function withActivityLock(callback) {
+    return window.navigator?.locks
+      ? window.navigator.locks.request(activityKey, callback)
+      : callback();
+  }
+
+  function readActivity(key) {
+    return withActivityLock(() => {
+      const history = activity();
+      const shouldRead = event => !event.read && (key === undefined || event.key === key);
+      if (history.some(shouldRead)) {
+        saveActivity(history.map(event => shouldRead(event) ? {...event, read: true} : event));
+      }
+    });
+  }
+
+  function observeStatuses(snapshot) {
+    if (snapshot.mode !== 'live' || !markedEntries().length) return;
+    return withActivityLock(() => {
+      const marks = new Map(markedEntries());
+      const history = activity();
+      const known = new Set(history.map(event => event.key));
+      const events = [];
+      for (const row of snapshot.rows) {
+        const id = row.signal_id;
+        const mark = marks.get(id);
+        if (!mark) continue;
+        const status = row.status || 'pending';
+        const at = row.status_at || row.at;
+        if (!statuses.has(status) || at < mark.at || (mark.status === 'removed' && status !== 'removed')) continue;
+        if (mark.status && mark.status !== 'demo' && mark.status !== status) {
+          const key = [id, mark.status, status, at].join(':');
+          if (!known.has(key)) {
+            events.push({key, id, symbol: row.symbol, module: row.module, tf: row.tf,
+              direction: row.direction, from: mark.status, to: status,
+              at: status === 'removed' ? Date.now() : at, read: false});
+            known.add(key);
+          }
+        }
+        if (mark.status !== status || mark.at !== at || !mark.row) saveMark(id, {status, at, row});
+      }
+      if (events.length) {
+        events.sort((a, b) => b.at - a.at);
+        saveActivity([...events, ...history].slice(0, 50));
+        showNotice(events);
+      }
+    });
+  }
+
+  function pollMarkedStatuses() {
+    if (statusRequest || !markedEntries().length) return;
+    statusRequest = fetch('/api/signals', {cache: 'no-store'})
+      .then(response => response.ok ? response.json() : null)
+      .then(snapshot => snapshot && observeStatuses(snapshot))
+      .catch(() => { /* Retry on the next refresh. */ })
+      .finally(() => { statusRequest = undefined; });
+  }
+
+  function markReviewed(id, card) {
+    if (unseen(id)) {
+      loadReviewed();
+      reviewed.add(id);
+      while (reviewed.size > 4000) reviewed.delete(reviewed.values().next().value);
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify([...reviewed]));
+      } catch {
+        // UI state remains available for the current page.
+      }
+    }
+    if (card) updateReview(card);
+  }
+
+  function number(value) {
+    // Saved A2 plans use decimal strings to retain exchange tick precision.
+    if (typeof value === 'string' && value.trim() !== '') value = Number(value);
+    return Number.isFinite(value) ? value : NaN;
+  }
+
+  function levels(row) {
+    return {entry:number(row.entry), stop:number(row.stop), tp1:number(row.tp1), tp2:number(row.tp2)};
+  }
+
+  const settledStatuses = new Set(['take_profit', 'tp2', 'stop_loss', 'tp1_then_stop']);
+
+  function settledR(row) {
+    const {entry, stop, tp1, tp2} = levels(row);
+    const side = row.direction;
+    const risk = side * (entry - stop);
+    if ((side !== 1 && side !== -1) || !(entry > 0 && stop > 0 && risk > 0)) return NaN;
+    if (row.status === 'stop_loss') return -1;
+    const first = side * (tp1 - entry) / risk;
+    if (!(tp1 > 0 && first > 0)) return NaN;
+    if (row.status === 'take_profit') return first;
+    // The A2 plan exits half at the first target and half at the final exit.
+    if (row.status === 'tp1_then_stop') return (first - 1) / 2;
+    const second = side * (tp2 - entry) / risk;
+    return tp2 > 0 && second >= first ? (first + second) / 2 : NaN;
+  }
+
+  function profitSummary(rows) {
+    const result = {total: rows.length, closed: 0, wins: 0, losses: 0, flat: 0,
+      profit: 0, loss: 0, net: 0, pending: 0, open: 0, unfilled: 0, unknown: 0};
+    for (const row of rows) {
+      const status = row.status || 'pending';
+      if (settledStatuses.has(status)) {
+        const value = settledR(row);
+        if (!Number.isFinite(value)) { result.unknown++; continue; }
+        result.closed++;
+        if (value > 1e-9) { result.wins++; result.profit += value; }
+        else if (value < -1e-9) { result.losses++; result.loss -= value; }
+        else result.flat++;
+      } else if (status === 'pending') result.pending++;
+      else if (status === 'triggered' || status === 'tp1') result.open++;
+      else if (status === 'expired' || status === 'invalidated' || (status === 'removed' && !row.triggered_at)) result.unfilled++;
+      else result.unknown++;
+    }
+    result.net = result.profit - result.loss;
+    return result;
+  }
+
+  function structureNote(row) {
+    if (row.module === '异动结构' && Number.isFinite(row.box_edge)) {
+      const clock = new Date(row.alert_at).toLocaleTimeString('zh-HK', {timeZone:'Asia/Hong_Kong', hour12:false});
+      const sources = (row.observed_modules || []).join('／') || '暂无记录';
+      return `Alpha ${row.alert_model === 'core' ? '完整版' : '价量'}预警 ${clock} · 合约箱沿 ${row.box_edge} · 预警后已观察同向信号：${sources}`;
+    }
+    if (row.module === 'PA' && Number.isInteger(row.reaction_signal_no) && Number.isFinite(row.entry_edge_pct)) {
+      return `同一箱边反应第 ${row.reaction_signal_no} 次形态提示 · 入场距该侧箱沿 ${row.entry_edge_pct.toFixed(1)}% 箱宽`;
+    }
+    if (row.module === 'ICT') {
+      const bars = row.fvg_mss_bars;
+      if (Number.isInteger(bars)) {
+        const timing = bars === 0 ? '同根' : `${bars < 0 ? '前' : '后'} ${Math.abs(bars)} 根`;
+        return `同腿 FVG 在 MSS ${timing} K 线收盘确认`;
+      }
+      if (row.same_close_fvg === true) return 'MSS 收盘时已有同腿 FVG';
+      if (row.same_close_fvg === false) return 'MSS 收盘后才确认同腿 FVG';
+    }
+    return '';
+  }
+
+  function metrics(row) {
+    const net = number(row.net_rr);
+    const hasNet = Number.isFinite(net);
+    const {entry, stop, tp1, tp2} = levels(row);
+    const direction = row.direction;
+    const risk = direction * (entry - stop);
+    const reward = direction * (tp1 - entry);
+    const validPlan = (direction === 1 || direction === -1) && entry > 0 && stop > 0 && tp1 > 0;
+    const planRatio = validPlan && risk > 0 && reward > 0 ? reward / risk : NaN;
+    const ratio = hasNet ? net : planRatio;
+    const ratioLabel = hasNet ? '估算净盈亏比' : Number.isFinite(tp2) ? '计划盈亏比 · 目标一' : '计划盈亏比';
+    const ratioText = Number.isFinite(ratio) ? ratio.toFixed(2) : '—';
+    const lowRatio = Number.isFinite(ratio) && ratio < 1;
+    const score = number(row.score);
+    const scoreText = Number.isFinite(score) ? `${score.toFixed(1)} <small>/ 100</small>` : '—';
+    const scoreHint = row.module === 'A2' && !Number.isFinite(score) ? ' <small>原版未评分</small>' : '';
+    return `<div class="signal-metrics">
+      <div${lowRatio ? ' class="signal-ratio-low"' : ''}><span>${ratioLabel}</span><strong>${ratioText}${lowRatio ? ' <small>低于 1</small>' : ''}</strong></div>
+      <div><span>信号评分</span><strong>${scoreText}${scoreHint}</strong></div>
+    </div>`;
+  }
+
+  function reviewTarget(event) {
+    const card = event.target.closest?.(selector);
+    if (card) markReviewed(card.dataset.reviewSignal, card);
+  }
+
+  function syncCards() {
+    loadReviewed();
+    for (const card of document.querySelectorAll(selector)) updateCard(card);
+  }
+
+  loadReviewed();
+  document.addEventListener('pointermove', event => {
+    if (event.pointerType === 'mouse' || event.pointerType === 'pen') reviewTarget(event);
+  }, { passive: true });
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-toggle-signal-mark]');
+    if (button) {
+      toggleMark(button.closest(selector));
+      return;
+    }
+    if (event.target.closest?.('#dismissSignalNotice, #viewSignalActivity')) {
+      document.getElementById('signalStatusNotice').hidden = true;
+    } else reviewTarget(event);
+  });
+  window.addEventListener('storage', event => {
+    const markChanged = event.key?.startsWith(markPrefix) && Boolean(event.oldValue) !== Boolean(event.newValue);
+    if (event.key === null || event.key === storageKey || markChanged) syncCards();
+    if (event.key === null || markChanged) notify('marks');
+    if (event.key === null || event.key === activityKey) {
+      notify('activity');
+      const known = new Set(parseActivity(event.oldValue).map(item => item.key));
+      showNotice(parseActivity(event.newValue).filter(item => !item.read && !known.has(item.key)));
+    }
+  });
+  window.addEventListener('pageshow', syncCards);
+  window.signalCards = {
+    unseen, updateCard, markReviewed, markButton, metrics, levels, structureNote, badge, statusBadge, profitSummary,
+    isMarked, markedEntries, activity, onChange, readActivity, observeStatuses, pollMarkedStatuses,
+  };
+})();
+</script>
+<script>
+'use strict';
+const get=id=>document.getElementById(id);
+const radarOnly=document.body?.dataset?.radarOnly==='true';
+const signalCards=window.signalCards;
+const escape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+const date=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Hong_Kong',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+const price=new Intl.NumberFormat('en-US',{useGrouping:false,maximumSignificantDigits:9});
+const fmtTime=ms=>ms?date.format(ms):'—';
+const pct=value=>Number.isFinite(value)?(value>0?'+':'')+(value*100).toFixed(2)+'%':'—';
+const PAGE_SIZE=30;
+let state, page=0, busy=false, revision=0;
+let selectedPair='', selectedSignal='', detailRevision=0;
+let selectedCoin='', selectedMarket='', detailOrigin='';
+let selectedAlert='', detailRequest=null, coinDisplay=null;
+let chainSelection='';
+const groupLimits={};
+const GROUPS=[['both','价量与完整版共振','两套模型当前同时满足'],['ae','价量共振','放量与价格异常同时满足'],
+  ['core','完整版共振','加入持仓与已结算费率的模型满足'],['volume','现货放量','成交额达到异常标准'],
+  ['price','价格异常','1小时涨跌幅达到异常标准'],['derivatives','持仓／费率异常','合约端存在异常证据'],
+  ['normal','正常观察','基准就绪，当前未发现异常条件'],['warming','基准不足／无成交','等待可判断的数据'],['error','数据异常／过期','当前暂停信号判断']];
+const names={A:'现货放量',OB:'OI增仓异常',C:'费率异常',E:'价格异常'};
+const observationRules=[
+  ['low_range','低位窄幅','', '4 小时箱体中点位于此前 7 天区间下四分之一，宽度 ≤3% 且 ≤ 历史 P30；至少 36 根有成交，单根成交额占比 ≤40%。'],
+  ['breakout_up','早期上破','upside','5 分钟收盘上破此前 2 小时高点且距离 ≤3%；15 分钟成交额 ≥ 历史中位数的 2 倍且 ≥P90。'],
+  ['breakout_down','早期下破','risk','5 分钟收盘下破此前 2 小时低点且距离 ≤3%；15 分钟成交额 ≥ 历史中位数的 2 倍且 ≥P90。'],
+  ['spot_volume','现货侧放量','', '现货 1 小时量比 ≥2，永续量比 <2。'],
+  ['perp_volume','永续侧放量','', '永续 1 小时量比 ≥2，现货量比 <2。'],
+  ['both_volume','双边放量','', '现货和永续 1 小时量比均 ≥2。'],
+  ['spot_thin','现货成交偏薄','risk','现货 1 小时量比 ≤0.5，永续量比 ≥1。'],
+  ['price_oi_divergence','涨价减仓','risk','4 小时现货涨幅 ≥5%，永续持仓数量同期减少 ≥5%。'],
+  ['high_pullback','冲高回撤','risk','24 小时内收盘曾较窗口起点上涨 ≥20%，当前较期间最高收盘回落 ≥8%。'],
+  ['perp_discount','永续明显折价','risk','同一根 5 分钟收盘，永续比 Alpha 现货低 ≥3%。'],
+];
+const amount=new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2,notation:'compact'});
+const num=value=>Number.isFinite(value)?price.format(value):'—';
+const compact=value=>Number.isFinite(value)?amount.format(value):'—';
+const rate=value=>Number.isFinite(value)?(value*100).toFixed(5)+'%':'—';
+const marketSource=row=>row?.source==='spot'?'spot':'alpha';
+const marketVenue=row=>marketSource(row)==='spot'?'币安现货':'币安 Alpha';
+const coverageText=row=>Number.isFinite(row.analysis?.coverage?.ohlc_fraction_30d)?
+  '30 天覆盖 '+(row.analysis.coverage.ohlc_fraction_30d*100).toFixed(1)+'%':'等待覆盖统计';
+const ageText=at=>at?'距今 '+Math.max(0,Math.floor((Math.max(state?.now||0,Date.now())-at)/60000))+' 分钟':'等待行情';
+
+function selectMarketPanel(panel){
+  for(const [id,button] of [['signalGroups','showGroups'],['marketTable','showMarkets'],['alertPanel','showAlerts']]){
+    get(id).hidden=id!==panel;
+    get(button).setAttribute?.('aria-pressed',String(id===panel));
+  }
+  get('marketSort').hidden=panel==='alertPanel';
+  get('advancedFilters').classList?.toggle('alerts-view',panel==='alertPanel');
+}
+function coinHref(coin,market,origin='alpha',signal='',alert=''){
+  return '/coin#/coin/'+encodeURIComponent(coin)+'?market='+encodeURIComponent(market)+'&from='+encodeURIComponent(origin)+
+    (signal?'&signal='+encodeURIComponent(signal):'')+(alert?'&alert='+encodeURIComponent(alert):'');
+}
+function detailHref(pair,coin){
+  const key=coin||state?.markets?.find(row=>row.pair===pair)?.coin;
+  return key?coinHref(key,'spot'):'#/market/'+encodeURIComponent(pair||'');
+}
+
+function readiness(row){
+  if(row.spot_error||(row.bar_ms&&(!row.fresh||Math.max(state?.now||0,Date.now())-row.bar_ms>600000)))return 'error';
+  return row.ae_ready?'ready':'warming';
+}
+
+function marketStatus(row){
+  if(row.scanning)return '正在核对';
+  if(row.spot_error)return '行情读取失败';
+  if(!row.scanned_ms)return '排队等待';
+  if(readiness(row)==='error')return '行情有缺口或已过期';
+  if(!row.ae_ready)return row.status||'准备历史基准';
+  if(row.core_supported)return '价量就绪 · 完整版'+(row.core_ready?'就绪':'数据不足');
+  return '价量就绪';
+}
+
+function scoreInfo(row,model,frozen=false){
+  const saved=row.research_scores?.[model];
+  if(!frozen){
+    if(readiness(row)==='error')return {value:null,reason:'行情过期或读取失败'};
+    if(!row.ae_ready)return {value:null,reason:row.status||'等待历史基准'};
+    if(row.active===false)return {value:null,reason:'当前K线无实际成交'};
+    if(model==='core'&&!row.core_ready)return {value:null,reason:'OI／已结算费率不足'};
+  }
+  return saved||{value:null,reason:frozen?'该预警未记录评分':'等待下一轮评分'};
+}
+
+function scoreHTML(row,model,frozen=false){
+  const score=scoreInfo(row,model,frozen);
+  if(!Number.isFinite(score.value))return '<span class="score-value">—</span><span class="score-parts">'+escape(score.reason||'评分不可用')+'</span>';
+  const weights=model==='ae'?{A:60,E:40}:{A:35,OB:25,C:15,E:25};
+  const parts=Object.entries(weights).map(([key,weight])=>key+' '+(Number.isFinite(score.parts?.[key])?score.parts[key].toFixed(1):'—')+'/'+weight).join(' · ');
+  return '<span class="score-value">'+score.value.toFixed(1)+' <span class="score-label">/ 100</span></span><span class="score-parts">'+escape(parts)+'</span>';
+}
+
+function scoreOrder(row,model){
+  const value=scoreInfo(row,model).value;
+  return Number.isFinite(value)?value:-1;
+}
+
+function signalGroup(row){
+  const health=readiness(row);
+  if(health==='error')return 'error';
+  if(health!=='ready'||row.active===false)return 'warming';
+  if(row.ae_signal&&row.core_ready&&row.core_signal)return 'both';
+  if(row.ae_signal)return 'ae';
+  if(row.core_ready&&row.core_signal)return 'core';
+  if(row.conditions?.A)return 'volume';
+  if(row.conditions?.E)return 'price';
+  if(row.core_ready&&(row.conditions?.OB||row.conditions?.C))return 'derivatives';
+  return 'normal';
+}
+
+function conditionTags(row){
+  if(['warming','error'].includes(signalGroup(row)))return '';
+  return Object.entries(row.conditions||{}).filter(([key,value])=>value&&(row.core_ready||['A','E'].includes(key)))
+    .map(([key])=>'<span class="tag">'+escape(names[key]||key)+'</span>').join('');
+}
+
+function observationHits(row){
+  return row.active!==false&&row.fresh&&readiness(row)!=='error'
+    ? observationRules.filter(([key])=>row.observations?.rules?.[key]===true)
+    : [];
+}
+
+function observationTags(row){
+  return observationHits(row).map(([,name,tone])=>
+    `<span class="tag observation-tag ${tone}">${name}</span>`).join('');
+}
+
+function renderObservations(row){
+  get('observationSection').hidden=!row;
+  if(!row)return;
+  const meta=row.observations;
+  const m=meta?.metrics||{};
+  const available=row.fresh&&row.active!==false&&readiness(row)!=='error';
+  const money=value=>Number.isFinite(value)?compact(value)+' '+row.quote:'—';
+  const multiple=value=>Number.isFinite(value)?num(value)+'×':'—';
+  const volumes=`现货 ${money(m.spot_quote_1h)}（${multiple(m.spot_ratio)}） · 永续 ${money(m.perp_quote_1h)}（${multiple(m.perp_ratio)}） · 期现比 ${multiple(m.volume_ratio)}`;
+  const volume15=`15 分钟成交额 ${money(m.spot_quote_15m)}（${multiple(m.spot_ratio_15m)}），P90 ${money(m.spot_quote_15m_p90)}`;
+  const actual={
+    low_range:`箱体宽 ${pct(m.range_width)} / 上限 ${pct(m.range_width_limit)} · 位置 ${pct(m.range_position)} · 有成交 ${m.range_active_bars??'—'}/48 · 最大单根占 ${pct(m.range_largest_trade_share)}`,
+    breakout_up:`前高 ${num(m.breakout_high)} · ${volume15}`,
+    breakout_down:`前低 ${num(m.breakout_low)} · ${volume15}`,
+    spot_volume:volumes,perp_volume:volumes,both_volume:volumes,spot_thin:volumes,
+    price_oi_divergence:`现货 ${pct(m.price_4h)} · OI 数量 ${pct(m.oi_4h)}`,
+    high_pullback:`期间最大涨幅 ${pct(m.rally_from_prior_close)} · 从高点回撤 ${pct(m.pullback_from_high)}`,
+    perp_discount:`同收盘期现价差 ${pct(m.basis)}`,
+  };
+  const matched=observationHits(row).length;
+  const feed=!meta?'等待新版监控服务提供规则数据':!available?'现货缺成交或已过期':!meta.paired_symbol?'该市场尚无已核对的 USDT 永续':
+    meta.paired_error?'永续数据更新：'+meta.paired_error:!meta.paired_fresh?'等待同时间的永续收盘':meta.paired_symbol+' 已对齐';
+  get('observationFeedback').textContent=`当前命中 ${matched} 项 · ${feed}。量比使用过去 7 天同长度成交额中位数。`;
+  get('observationRules').innerHTML='<table><thead><tr><th>规则</th><th>实际数据</th><th>门槛</th><th>状态</th></tr></thead><tbody>'+
+    observationRules.map(([key,name,,criteria])=>{
+      const hit=available?meta?.rules?.[key]:null;
+      return `<tr><td>${name}</td><td>${available?escape(actual[key]):'—'}</td><td>${criteria}</td>
+        <td class="${hit===true?'status-pass':hit===false?'status-fail':'small'}">${hit===true?'已命中':hit===false?'未命中':'数据不足'}</td></tr>`;
+    }).join('')+'</tbody></table>';
+  const levels=[];
+  if(Number.isFinite(m.range_low)&&Number.isFinite(m.range_high))levels.push(`4 小时箱体 ${num(m.range_low)}–${num(m.range_high)} ${row.quote}`);
+  if(Number.isFinite(m.projection))levels.push(`区间等幅参考 ${num(m.projection)} ${row.quote}`);
+  get('observationLevels').hidden=!available||!levels.length;
+  get('observationLevels').textContent=levels.join(' · ');
+}
+
+function renderGroups(rows){
+  const openGroups={};
+  document.querySelectorAll?.('[data-signal-group]').forEach(node=>{openGroups[node.dataset.signalGroup]=node.open;});
+  const groups=new Map(GROUPS.map(([key])=>[key,[]]));
+  for(const row of rows)groups.get(signalGroup(row)).push(row);
+  const selected=get('signalGroup').value;
+  const expanding=Boolean(get('query').value.trim()||get('observationFilter').value);
+  get('signalGroups').innerHTML=GROUPS.filter(([key])=>selected?key===selected:groups.get(key).length).map(([key,title,description])=>{
+    const members=groups.get(key);
+    const limit=groupLimits[key]||6;
+    const opened=(expanding&&members.length>0)||(openGroups[key]??(Boolean(selected)||!['normal','warming','error'].includes(key)));
+    const cards=members.slice(0,limit).map(row=>{
+      const ae=scoreInfo(row,'ae').value,core=scoreInfo(row,'core').value;
+      return `<a class="coin-card" href="${escape(detailHref(row.pair,row.coin))}" aria-label="查看 ${escape(row.symbol)} ${marketVenue(row)}详情"><div class="coin-top"><h3>${escape(row.symbol)}</h3><span class="market-venue">${marketVenue(row)}</span></div>
+        <span class="code">${escape(row.name||row.pair)}</span><div class="coin-price">${num(row.price)} <span class="score-label">${escape(row.quote)}</span></div>
+        <p class="small">1h <span class="${row.r1>0?'up':row.r1<0?'down':''}">${pct(row.r1)}</span> · 24h ${pct(row.r24)} · 量比 ${num(row.V)}×</p>
+        <div class="coin-score"><span>价量分 <strong>${Number.isFinite(ae)?ae.toFixed(1):'—'}</strong></span><span>完整分 <strong>${Number.isFinite(core)?core.toFixed(1):'—'}</strong></span></div>
+        <div>${conditionTags(row)}${observationTags(row)}</div><p class="small">${escape(marketStatus(row))} · ${escape(ageText(row.bar_ms))} · ${coverageText(row)}</p></a>`;
+    }).join('');
+    return `<details class="signal-group" data-signal-group="${key}" ${opened?'open':''}><summary>${title} · ${members.length} <span class="small">${description}</span></summary><div class="group-content"><div class="coin-grid">${cards}</div>
+      ${members.length>limit?'<button class="more-coins" data-more-group="'+key+'">再显示 6 个（剩余 '+(members.length-limit)+'）</button>':''}${members.length?'':'<p class="group-empty">当前筛选下暂无币种。</p>'}</div></details>`;
+  }).join('')||'<p class="group-empty">当前筛选下暂无币种。</p>';
+}
+
+function alertContent(row){
+  const evidence=row.evidence||{};
+  const reasons=row.model==='ae'?['现货放量','短线涨跌异常']:(evidence.triggers||[]);
+  const outcomes=[72,168,336].map(hours=>hours/24+' 天 '+(row.outcomes[hours]?.status||'待观察')).join(' · ');
+  const pair=row.pair||evidence.pair;
+  const label=(row.display_symbol||evidence.display_symbol||row.symbol)+' · '+(row.model==='ae'?'价量版':'完整版');
+  const coin=row.coin||evidence.coin||state?.markets?.find(market=>market.pair===pair)?.coin;
+  const url=row.link||(row.id&&coin?coinHref(coin,'spot','alpha','',row.id):detailHref(pair,coin));
+  return `<h3>${pair?'<a href="'+escape(url)+'">'+escape(label)+'</a>':escape(label)}</h3>
+    <span class="small">${marketVenue(row.source?row:evidence)} · ${escape(fmtTime(row.bar_ms))} · ${escape(num(row.price)+' '+(row.quote||evidence.quote||''))}</span>
+    <p class="small">近 1 小时 ${pct(evidence.r1)} · ${escape(reasons.join('、'))}</p>
+    <div class="alert-score"><span class="small">触发时${row.model==='ae'?'价量':'完整'}研究分</span>${scoreHTML(evidence,row.model,true)}</div>
+    <p class="small outcomes">追踪 ±${Math.round(row.threshold*100)}% · ${escape(outcomes)}</p>`;
+}
+
+const alertHTML=row=>'<article class="alert">'+alertContent(row)+'</article>';
+
+const cardMarkup=new WeakMap();
+function syncDetailCards(container, cards){
+  const previous=new Map(Array.from(container.children,node=>[node.dataset.detailKey,node]));
+  for(const [index,card] of cards.entries()){
+    const node=previous.get(card.key)||document.createElement('article');
+    previous.delete(card.key);
+    node.dataset.detailKey=card.key;
+    if(cardMarkup.get(node)!==card.html){
+      const restoreFocus=node.contains(document.activeElement);
+      node.innerHTML=card.html;
+      cardMarkup.set(node,card.html);
+      if(restoreFocus)node.querySelector('a')?.focus({preventScroll:true});
+    }
+    node.className=card.empty?'small':'alert';
+    if(card.reviewId){
+      node.dataset.reviewSignal=card.reviewId;
+      node.dataset.signalStatus=card.status;
+      node.dataset.signalStatusAt=card.statusAt;
+      signalCards.updateCard(node);
+    }
+    if(container.children[index]!==node)container.insertBefore(node,container.children[index]||null);
+  }
+  for(const node of previous.values())node.remove();
+}
+
+function markSelectedRecord(){
+  const key=selectedMarket==='spot'?selectedAlert:selectedSignal;
+  for(const id of ['contractRecords','detailAlerts']){
+    for(const node of get(id).children){
+      const active=Boolean(key)&&node.dataset.detailKey===key;
+      node.classList.toggle('record-active',active);
+      node.querySelector('a')?.setAttribute('aria-current',active?'true':'false');
+    }
+  }
+}
+
+function keepRecordPosition(render){
+  const section=get('alertsSection');
+  const scroll=window.scrollY||0;
+  const bounds=section.getBoundingClientRect?.();
+  const visible=scroll>0&&bounds&&bounds.top<window.innerHeight&&bounds.bottom>0;
+  let anchor;
+  if(visible){
+    const cards=[...get('contractRecords').children,...get('detailAlerts').children];
+    anchor=cards.find(node=>node.getBoundingClientRect().bottom>0&&node.getBoundingClientRect().top<window.innerHeight)||section;
+  }
+  const top=anchor?.getBoundingClientRect().top;
+  render();
+  if(anchor?.isConnected){
+    const delta=anchor.getBoundingClientRect().top-top;
+    if(Math.abs(delta)>1)window.scrollBy(0,delta);
+  }
+}
+
+function render(){
+  if(!state)return;
+  const markets=state.markets;
+  const activeSource=get('sourceFilter').value;
+  const watchedOnly=get('watchFilter').value==='watch';
+  const sourceMarkets=markets.filter(row=>(!activeSource||marketSource(row)===activeSource)&&(!watchedOnly||row.watched));
+  const grouped=sourceMarkets.reduce((counts,row)=>{counts[readiness(row)]++;return counts;},{ready:0,warming:0,error:0});
+  const feed=!markets.length?'正在读取币安现货与 Alpha 行情目录…':
+    (state.paused?'扫描已暂停':'轮扫已收盘的 5 分钟 K 线')+' · 香港时间';
+  const retries=[['币安 Alpha',state.retry_at?.spot],['币安现货',state.retry_at?.exchange_spot],['币安永续',state.retry_at?.perp]]
+    .filter(([,at])=>at).map(([label,at])=>`${label}接口限频，${fmtTime(at)} 后自动重试`);
+  get('feedStatus').textContent=[feed,state.error,...retries].filter(Boolean).join(' · ');
+  get('summary').innerHTML=[['当前市场标的',sourceMarkets.length],['价量就绪',grouped.ready],['等待基准或成交',grouped.warming],['数据异常或过期',grouped.error]]
+    .map(([label,count])=>'<div><strong>'+count+'</strong>'+label+'</div>').join('');
+  get('pause').textContent=state.paused?'继续扫描':'暂停扫描';
+  for(const id of ['pause','threshold','clear'])get(id).disabled=busy;
+  if(!busy)get('threshold').value='.'+Math.round(state.threshold*10);
+  const query=get('query').value.trim().toLowerCase();
+  const direction=Number(get('direction').value);
+  const selected=get('readiness').value;
+  const sort=get('sort').value;
+  const group=get('signalGroup').value;
+  const observation=get('observationFilter').value;
+  const hits=sourceMarkets.filter(row=>[row.symbol,row.name,row.pair,row.id,row.contract].some(x=>String(x||'').toLowerCase().includes(query))&&
+    (!direction||Math.sign(row.r1||0)===direction)&&(!selected||readiness(row)===selected)&&(!group||signalGroup(row)===group)&&
+    (!observation||observationHits(row).some(([key])=>observation==='any'||key===observation)));
+  hits.sort((a,b)=>(sort==='ae_score'?scoreOrder(b,'ae')-scoreOrder(a,'ae'):sort==='core_score'?scoreOrder(b,'core')-scoreOrder(a,'core'):
+    sort==='move'?Math.abs(b.r1||0)-Math.abs(a.r1||0):sort==='new'?(b.scanned_ms||0)-(a.scanned_ms||0):0)||
+    a.symbol.localeCompare(b.symbol)||a.pair.localeCompare(b.pair));
+  renderGroups(hits);
+  const pages=Math.max(1,Math.ceil(hits.length/PAGE_SIZE));
+  page=Math.min(page,pages-1);
+  get('pageLabel').textContent=hits.length+' 个标的 · '+(page+1)+' / '+pages;
+  get('prev').disabled=page===0;
+  get('next').disabled=page===pages-1;
+  get('markets').innerHTML=hits.slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE).map(row=>{
+    const health=readiness(row);
+    return `<tr><td><a href="${escape(detailHref(row.pair,row.coin))}"><strong>${escape(row.symbol)}</strong></a><span class="code">${marketVenue(row)} · ${escape(row.name||row.pair)}</span>${observationTags(row)}</td>
+      <td title="${escape(row.pair)}">${escape(row.quote)}</td><td>${row.price==null?'—':escape(price.format(row.price))}</td>
+      <td class="${row.r1>0?'up':row.r1<0?'down':''}">${pct(row.r1)}</td><td>${row.V==null?'—':row.V.toFixed(2)+'×'}</td>
+      <td>${scoreHTML(row,'ae')}</td><td>${scoreHTML(row,'core')}</td>
+      <td class="${health==='error'?'bad':health==='ready'?'ready':'warm'}" title="${escape(row.spot_error||row.derivative_error||'')}">${escape(marketStatus(row))}</td>
+      <td title="${escape('本机核对 '+fmtTime(row.scanned_ms))}">${escape(fmtTime(row.bar_ms))}<span class="code">${escape(ageText(row.bar_ms))} · ${coverageText(row)}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="9">当前没有匹配的币种。</td></tr>';
+  const watchedPairs=new Set(sourceMarkets.filter(row=>row.watched).map(row=>row.pair));
+  const alerts=state.alerts.filter(row=>(!activeSource||marketSource(row.source?row:row.evidence)===activeSource)&&(!watchedOnly||watchedPairs.has(row.pair))&&
+    [row.display_symbol,row.pair].some(value=>String(value||'').toLowerCase().includes(query))&&
+    (!direction||Math.sign(row.evidence.r1||0)===direction));
+  get('alertCount').textContent=alerts.length?alerts.length+' 条匹配预警'+(alerts.length>50?' · 显示最近 50 条':''):'当前没有匹配的实时预警。';
+  get('alerts').innerHTML=alerts.slice(0,50).map(alertHTML).join('');
+}
+
+function metric(label,value,caption=''){
+  return '<div class="metric"><span class="small">'+escape(label)+'</span><strong>'+escape(value)+'</strong><span class="small">'+escape(caption)+'</span></div>';
+}
+
+const chartCanvas=get('detailChart');
+let candles=[], candleStep=0, candleQuote='', candleFocus=null, candleLayout=null;
+let chartViewport=null, dragging=null, chartAnnotations={};
+
+const chartCategories=new Map([
+  ['ae',{label:'Alpha 价量预警',color:'#7049a2'}],
+  ['core',{label:'Alpha 完整版预警',color:'#aa367a'}],
+  ['PA',{label:'PA 信号',color:'#256ba1'}],
+  ['ICT',{label:'ICT 信号',color:'#167161'}],
+  ['A2',{label:'A2 信号',color:'#9a5a11'}],
+  ['异动结构',{label:'异动结构',color:'#87503d'}],
+]);
+
+function categoryMarkers(records,alerts){
+  return [
+    ...alerts.map(alert=>({category:alert.model,at:alert.bar_ms,label:chartCategories.get(alert.model)?.label})),
+    ...records.map(row=>({category:row.module,at:row.at,
+      label:`${row.module} · ${row.tf} 分钟 · ${row.direction===1?'做多':'做空'} · ${row.method}`})),
+  ].filter(marker=>chartCategories.has(marker.category)&&Number.isFinite(marker.at))
+    .sort((a,b)=>a.at-b.at);
+}
+
+function chartBounds(){
+  return [candles[0].time-candleStep/2,candles.at(-1).time+candleStep/2];
+}
+
+function setChartViewport(start,duration){
+  if(!candles.length)return;
+  const [first,last]=chartBounds(), full=last-first;
+  const span=Math.min(full,Math.max(Math.min(full,12*candleStep),duration));
+  chartViewport={start:Math.max(first,Math.min(last-span,start)),span};
+}
+
+function zoomChart(factor, position=.5){
+  if(!chartViewport)return;
+  const {start,span}=chartViewport;
+  const [first,last]=chartBounds();
+  const next=Math.min(last-first,Math.max(12*candleStep,span*factor));
+  setChartViewport(start+(span-next)*position,next);
+  candleFocus=null;
+  drawCandles();
+}
+
+function zoomFromControl(factor){
+  const at=chartAnnotations.focus;
+  if(!chartViewport||!Number.isFinite(at)){zoomChart(factor);return;}
+  const position=(at-chartViewport.start)/chartViewport.span;
+  zoomChart(factor,position>=0&&position<=1?position:.5);
+}
+
+function resetChart(center=null){
+  if(!candles.length)return;
+  const [first,last]=chartBounds();
+  const span=Number.isFinite(center)?Math.min(last-first,100*candleStep):last-first;
+  setChartViewport(Number.isFinite(center)?center-span*.45:first,span);
+  candleFocus=null;
+  drawCandles();
+}
+
+function drawCandles(){
+  const first=chartViewport?.start??0,last=first+(chartViewport?.span??0);
+  const shown=candles.filter(point=>point.time>=first&&point.time<=last);
+  const selected=shown.find(point=>point.time===candleFocus)||shown.at(-1);
+  const volumeLabel=chartAnnotations.volumeLabel||'成交额';
+  get('candleReadout').textContent=selected?
+    `${fmtTime(selected.time)}  ·  开 ${num(selected.open)}  高 ${num(selected.high)}  低 ${num(selected.low)}  收 ${num(selected.close)}  ·  ${volumeLabel} ${compact(selected.quote)}${volumeLabel==='成交额'?' '+candleQuote:''}${selected.partial?'  ·  数据不足整根':''}`:
+    candles.length?'该时段暂无 K 线。':'暂无已保存的 K 线。';
+  const lanes=chartAnnotations.lanes||[];
+  const markerReadout=get('chartEventReadout');
+  markerReadout.hidden=!lanes.length;
+  if(lanes.length){
+    const hits=selected?lanes.flatMap(lane=>lane.markers.filter(event=>event.anchor===selected.time)):[];
+    const labels=hits.map(event=>`${fmtTime(event.at).slice(-5)} ${event.label}`);
+    markerReadout.textContent=labels.length?labels.join(' ｜ '):'悬停或使用方向键查看该根 K 线内的预警和信号。';
+    markerReadout.title=labels.join(' ｜ ');
+  }
+  chartCanvas.hidden=!candles.length;
+  candleLayout=null;
+  for(const id of ['chartZoomIn','chartZoomOut','chartReset'])get(id).disabled=!candles.length;
+  get('chartSignal').hidden=!chartAnnotations.focus;
+  get('chartSignal').disabled=!candles.length;
+  if(!candles.length)return;
+  const w=chartCanvas.clientWidth, h=chartCanvas.clientHeight;
+  if(!w||!h)return;
+  const ctx=chartCanvas.getContext('2d');
+  if(!ctx)return;
+  const scale=window.devicePixelRatio||1;
+  const pixelWidth=Math.round(w*scale),pixelHeight=Math.round(h*scale);
+  if(chartCanvas.width!==pixelWidth)chartCanvas.width=pixelWidth;
+  if(chartCanvas.height!==pixelHeight)chartCanvas.height=pixelHeight;
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const markerHeight=lanes.length*7;
+  const left=10, right=w-92, top=30+markerHeight, priceBottom=h-116, volumeTop=h-87, bottom=h-34;
+  if(right<=left)return;
+  const range=shown.length?shown:candles;
+  const events=(chartAnnotations.events||[]).filter(event=>event.at>=first&&event.at<=last);
+  const nearby=events.length>0;
+  const levels=chartAnnotations.levels||[];
+  const relevantLevels=nearby&&chartAnnotations.focus?levels.map(level=>level.price):[];
+  const lowest=Math.min(...range.map(point=>point.low),...relevantLevels);
+  const highest=Math.max(...range.map(point=>point.high),...relevantLevels);
+  const pad=(highest-lowest||highest*.01)*.07;
+  const low=lowest-pad, high=highest+pad;
+  const x=time=>left+(time-first)/(last-first)*(right-left);
+  const y=value=>priceBottom-(value-low)/(high-low)*(priceBottom-top);
+  const pitch=candleStep/(last-first)*(right-left);
+  const bodyWidth=Math.max(.7,Math.min(12,pitch*.62));
+  const maxVolume=Math.max(1,...shown.map(point=>point.quote||0));
+  candleLayout={left,right,x,pitch,shown};
+
+  function line(x1,y1,x2,y2,color){
+    ctx.strokeStyle=color;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  }
+
+  for(const [index,lane] of lanes.entries()){
+    const row=5+index*7;
+    line(left,row+2,right,row+2,'#e7eeec');
+    ctx.fillStyle=lane.color;
+    for(const marker of lane.markers){
+      if(marker.anchor<first||marker.anchor>last)continue;
+      const px=x(marker.anchor);
+      ctx.fillRect(Math.max(left,Math.min(right-4,px-2)),row,4,4);
+    }
+  }
+
+  ctx.font='11px system-ui';
+  ctx.textAlign='left';
+  for(let i=0;i<5;i++){
+    const value=high-(high-low)*i/4, row=y(value);
+    line(left,row,right,row,'#dce6e2');
+    ctx.fillStyle='#52676a';ctx.fillText(num(value),right+7,row+4);
+  }
+  line(left,bottom,right,bottom,'#dce6e2');
+  ctx.fillStyle='#52676a';ctx.fillText(volumeLabel,right+7,volumeTop+12);
+  const ticks=w>650?5:3;
+  for(let i=0;i<ticks;i++){
+    const fraction=i/(ticks-1);
+    const time=first+(last-first)*fraction;
+    const [day,hour]=fmtTime(time).split(' ');
+    ctx.textAlign=i===0?'left':i===ticks-1?'right':'center';
+    ctx.fillText(day,left+(right-left)*fraction,h-18);
+    ctx.fillText(hour,left+(right-left)*fraction,h-5);
+  }
+  for(const point of shown){
+    const px=x(point.time), opening=y(point.open), closing=y(point.close);
+    const color=point.close>point.open?'#187b66':point.close<point.open?'#b84941':'#687a78';
+    ctx.globalAlpha=point.partial?.52:1;
+    line(px,y(point.high),px,y(point.low),color);
+    ctx.fillStyle=color;
+    ctx.fillRect(px-bodyWidth/2,Math.min(opening,closing),bodyWidth,Math.max(1,Math.abs(opening-closing)));
+    ctx.globalAlpha=point.partial?.22:.38;
+    const volume=(point.quote||0)/maxVolume*(bottom-volumeTop);
+    ctx.fillRect(px-bodyWidth/2,bottom-volume,bodyWidth,volume);
+  }
+  ctx.globalAlpha=1;
+  for(const level of levels){
+    if(level.price<low||level.price>high)continue;
+    const py=y(level.price);
+    ctx.setLineDash([5,4]);line(left,py,right,py,level.color);ctx.setLineDash([]);
+    ctx.textAlign='left';ctx.fillStyle=level.color;ctx.fillText(level.label,left+5,py-4);
+  }
+  let lastLabel=-Infinity;
+  for(const event of events){
+    const px=x(event.at);
+    ctx.setLineDash([3,4]);line(px,top,px,bottom,event.color);ctx.setLineDash([]);
+    if(px-lastLabel<63)continue;
+    ctx.fillStyle=event.color;ctx.textAlign=px>right-65?'right':'left';
+    ctx.fillText(event.label,px,markerHeight+16);lastLabel=px;
+  }
+  if(selected&&candleFocus!==null&&selected.time===candleFocus){
+    ctx.setLineDash([3,3]);
+    line(x(selected.time),top,x(selected.time),bottom,'#718580');
+    line(left,y(selected.close),right,y(selected.close),'#718580');
+    ctx.setLineDash([]);
+  }
+}
+
+function showCandles(chart,quote,annotations={}){
+  const previous=candles.length?chartBounds():null;
+  const previousStep=candleStep;
+  candles=(chart?.points||[]).filter(point=>['time','open','high','low','close'].every(key=>Number.isFinite(point[key])));
+  candleStep=(chart?.interval_minutes||5)*60_000;
+  candleQuote=quote||'';
+  const start=chart?.actual_first_ms??(candles[0]?.time-candleStep+1);
+  const end=chart?.actual_last_ms??candles.at(-1)?.time;
+  const grouped=new Map();
+  let candleIndex=0;
+  for(const event of annotations.markers||[]){
+    if(!candles.length||event.at<start||event.at>end)continue;
+    while(candleIndex<candles.length-1&&candles[candleIndex].time<event.at)candleIndex++;
+    const close=candles[candleIndex].time;
+    const anchor=close-event.at<candleStep?close:event.at;
+    if(!grouped.has(event.category))grouped.set(event.category,[]);
+    grouped.get(event.category).push({...event,anchor});
+  }
+  const lanes=[...chartCategories].filter(([key])=>grouped.has(key))
+    .map(([key,category])=>({...category,markers:grouped.get(key)}));
+  chartAnnotations={...annotations,lanes};
+  get('chartLegend').innerHTML=[...(annotations.levels||[]).map(level=>[level.label,num(level.price),level.color]),
+    ...(annotations.events||[]).slice(-8).map(event=>[event.label,fmtTime(event.at),event.color])]
+    .map(([label,value,color])=>`<span style="color:${color}">${escape(label)} ${escape(value)}</span>`).join('')+
+    lanes.map(lane=>`<span class="chart-marker-label" style="color:${lane.color}">${lane.label} ${lane.markers.length} 条</span>`).join('');
+  if(!candles.some(point=>point.time===candleFocus))candleFocus=null;
+  if(!candles.length){chartViewport=null;drawCandles();return;}
+  if(!previous||!chartViewport||previousStep!==candleStep){resetChart(annotations.focus??null);return;}
+  const [first,last]=chartBounds();
+  if(chartViewport.span>=previous[1]-previous[0]-1){setChartViewport(first,last-first);}
+  else if(Math.abs(chartViewport.start+chartViewport.span-previous[1])<2){setChartViewport(last-chartViewport.span,chartViewport.span);}
+  else{setChartViewport(chartViewport.start,chartViewport.span);}
+  drawCandles();
+}
+
+function selectCandleAtPointer(event){
+  if(!candleLayout)return;
+  const {left,right,x,pitch,shown}=candleLayout;
+  const px=event.clientX-chartCanvas.getBoundingClientRect().left;
+  let nearest=null, distance=Math.max(5,pitch*.58);
+  if(px>=left&&px<=right){
+    for(const point of shown){
+      const difference=Math.abs(x(point.time)-px);
+      if(difference<distance){nearest=point;distance=difference;}
+    }
+  }
+  const time=nearest?.time??null;
+  if(time!==candleFocus){candleFocus=time;drawCandles();}
+}
+chartCanvas.onpointerdown=event=>{
+  if(!candleLayout||event.button!==0)return;
+  dragging={id:event.pointerId,x:event.clientX,start:chartViewport.start,moved:false};
+  chartCanvas.setPointerCapture?.(event.pointerId);
+  selectCandleAtPointer(event);
+};
+chartCanvas.onpointermove=event=>{
+  if(dragging?.id===event.pointerId&&candleLayout){
+    const delta=event.clientX-dragging.x;
+    if(!dragging.moved&&Math.abs(delta)<4)return;
+    dragging.moved=true;
+    chartCanvas.classList.add('dragging');
+    const {left,right}=candleLayout;
+    setChartViewport(dragging.start-delta*chartViewport.span/(right-left),chartViewport.span);
+    candleFocus=null;drawCandles();
+    return;
+  }
+  selectCandleAtPointer(event);
+};
+function endChartDrag(){dragging=null;chartCanvas.classList.remove('dragging');}
+chartCanvas.onpointerup=endChartDrag;
+chartCanvas.onlostpointercapture=endChartDrag;
+chartCanvas.onpointercancel=endChartDrag;
+chartCanvas.onpointerleave=()=>{if(candleFocus!==null){candleFocus=null;drawCandles();}};
+chartCanvas.addEventListener?.('wheel',event=>{
+  if(!candleLayout||!event.deltaY)return;
+  event.preventDefault();
+  const {left,right}=candleLayout;
+  const px=event.clientX-chartCanvas.getBoundingClientRect().left;
+  zoomChart(event.deltaY<0?.8:1.25,Math.max(0,Math.min(1,(px-left)/(right-left))));
+},{passive:false});
+get('chartZoomIn').onclick=()=>zoomFromControl(.75);
+get('chartZoomOut').onclick=()=>zoomFromControl(4/3);
+get('chartReset').onclick=()=>resetChart();
+get('chartSignal').onclick=()=>resetChart(chartAnnotations.focus);
+chartCanvas.onkeydown=event=>{
+  if(!candles.length||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+  event.preventDefault();
+  const found=candles.findIndex(point=>point.time===candleFocus);
+  const index=found<0?Math.max(0,candles.indexOf(candleLayout?.shown.at(-1))):found;
+  const next=event.key==='Home'?0:event.key==='End'?candles.length-1:index+(event.key==='ArrowLeft'?-1:1);
+  candleFocus=candles[Math.max(0,Math.min(candles.length-1,next))].time;
+  const {start,span}=chartViewport;
+  if(candleFocus<start||candleFocus>start+span)setChartViewport(candleFocus-span/2,span);
+  drawCandles();
+};
+if(typeof ResizeObserver==='function')new ResizeObserver(()=>{if(candles.length)drawCandles();}).observe(chartCanvas);
+
+function evidenceTable(rules,metrics,quote){
+  if(!rules.length)return '<p class="small">这条记录暂无逐项证据。</p>';
+  return '<table><thead><tr><th>证据</th><th>实际数值</th><th>判断门槛</th><th>状态</th></tr></thead><tbody>'+rules.map(rule=>{
+    const actual=rule.unit==='quote'?compact(rule.observed)+' '+quote:rule.unit==='funding'?rate(rule.observed)+'/小时':pct(rule.observed);
+    const threshold=rule.key==='C'?'正费率 ≥ '+rate(metrics.q95)+'；负费率 ≤ '+rate(metrics.q05)+' /小时':rule.unit==='quote'?'≥ '+compact(rule.threshold)+' '+quote:'≥ '+pct(rule.threshold);
+    const status=rule.passed==null?'不可判定':rule.passed?'已满足':'未满足';
+    return '<tr><td>'+escape(rule.key+' · '+rule.name)+'</td><td>'+escape(actual)+'</td><td>'+escape(threshold)+'</td><td class="'+(rule.passed?'status-pass':'status-fail')+'">'+status+'</td></tr>';
+  }).join('')+'</tbody></table>';
+}
+
+function flowMetrics(flow={}){
+  const share=value=>Number.isFinite(value)?(value*100).toFixed(1)+'%':'—';
+  return metric('15 分钟主动买入占比',share(flow.taker_buy_15m),flow.direction_note||'主动买入成交额 ÷ 同期成交额')+
+    metric('1 小时主动买入占比',share(flow.taker_buy_1h))+
+    metric('BTC 1 小时涨跌',pct(flow.btc_1h),'BTC/USDT 同期收盘')+
+    metric('相对 BTC',Number.isFinite(flow.relative_1h)?(flow.relative_1h*100).toFixed(2)+' 个百分点':'—','该币涨跌幅减 BTC 涨跌幅');
+}
+
+function renderDepth(data){
+  const row=data.market,books=data.books||[];
+  const latest=books[0];
+  get('depthStatus').textContent=[latest?'最新采样 '+fmtTime(latest.at)+(Date.now()-latest.at>120000?' · 历史快照':''):
+    (data.watched?'等待首次采样':'加入自选或触发新预警后开始采集'),data.book_error].filter(Boolean).join(' · ');
+  get('detailDepth').innerHTML=books.length?`<table><thead><tr><th>采样时间（香港）</th><th>价差</th><th>买侧 −1%（${escape(row.quote)}）</th><th>卖侧 +1%（${escape(row.quote)}）</th></tr></thead><tbody>${books.map(book=>
+    `<tr><td>${escape(fmtTime(book.at))}</td><td>${num(book.spread_bps)} bp</td><td>${book.bid_complete?'':'≥ '}${compact(book.bid_depth)}</td><td>${book.ask_complete?'':'≥ '}${compact(book.ask_depth)}</td></tr>`).join('')}</tbody></table>`:'';
+}
+
+function setupChain(row, alert){
+  const supported=radarOnly&&['1','56'].includes(String(row.chain_id))&&/^0x[0-9a-f]{40}$/i.test(row.contract||'');
+  get('chainEvidence').hidden=!supported;
+  if(!supported)return;
+  const key=row.pair+'|'+(alert?.id||'');
+  if(key===chainSelection)return;
+  chainSelection=key;
+  const button=get('loadChain'),status=get('chainStatus'),panel=get('detailChain');
+  panel.innerHTML='';
+  status.textContent=alert?'读取预警前后各 3 分钟':'读取最新完整区间';
+  button.disabled=false;
+  button.onclick=async()=>{
+    button.disabled=true;
+    status.textContent='正在读取已确认区块…';
+    panel.innerHTML='';
+    try{
+      const params=new URLSearchParams({pair:row.pair});
+      if(alert)params.set('alert',alert.id);
+      const response=await fetch('/api/alpha/chain?'+params,{cache:'no-store'});
+      const data=await response.json();
+      if(chainSelection!==key)return;
+      if(!response.ok)throw Error(data.error||'链上数据暂不可用');
+      const types={swap:'成交',mint:'新增流动性',burn:'移除流动性'};
+      const pools=Object.keys(data.pools);
+      status.textContent=fmtTime(data.anchor.ms)+' · 前后各 '+data.minutes+' 分钟 · '+pools.length+' 个池 · '+data.event_count+' 条事件'+(data.event_count>data.events.length?' · 显示最近 '+data.events.length+' 条':'');
+      const summary=['before','after'].flatMap(side=>pools.map(pool=>{
+        const entry=data.summary[side]?.[pool];
+        return entry?`${side==='before'?'事件前':'事件后'} ${pool} · 成交 ${entry.swaps} · 新增 ${entry.mints} · 移除 ${entry.burns}`:'';
+      })).filter(Boolean);
+      panel.innerHTML=summary.map(line=>'<div class="small">'+escape(line)+'</div>').join('')+
+        (data.events.length?'<table><thead><tr><th>区块</th><th>池</th><th>类型</th><th>交易哈希</th></tr></thead><tbody>'+
+          data.events.slice().reverse().map(event=>`<tr><td>${num(event.block)}</td><td>${escape(event.pool)}</td><td>${escape(types[event.kind])}</td><td><code>${escape(event.tx)}</code></td></tr>`).join('')+'</tbody></table>':'');
+    }catch(error){if(chainSelection===key)status.textContent=error.message;}
+    finally{if(chainSelection===key)button.disabled=false;}
+  };
+}
+
+function renderDetail(data,markers=categoryMarkers([],data.alerts)){
+  const row=data.market,m=row.analysis?.metrics||{},coverage=row.analysis?.coverage||{},group=signalGroup(row);
+  renderObservations(row);
+  const valid=!['warming','error'].includes(group);
+  const rules=(row.analysis?.rules||[]).map(rule=>({...rule,passed:valid&&(['A','E'].includes(rule.key)||row.core_ready)?rule.passed:null}));
+  get('detailTitle').textContent=row.symbol+' · 币种详情';
+  get('detailIdentity').textContent=(row.name||row.symbol)+' · '+row.pair+' · '+row.quote+' 计价';
+  get('detailTiming').textContent='行情收盘 '+fmtTime(row.bar_ms)+' · '+ageText(row.bar_ms)+' · '+coverageText(row);
+  get('detailFeedback').textContent=marketStatus(row)+(data.chart.has_gaps?' · 价格区间有数据缺口':'');
+  get('detailMetrics').innerHTML=metric('已收盘现货价',num(row.price)+' '+row.quote,'5分钟已收盘行情，非逐笔即时价')+
+    metric('近1小时涨跌',pct(row.r1),'近期方向，不是后续方向预测')+metric('近24小时涨跌',pct(row.r24))+
+    metric('近1小时成交额',compact(m.v1)+' '+row.quote,'量比 '+num(row.V)+'×')+
+    metric('4小时 OI 数量变化',pct(row.dOI),'OI数量 '+compact(m.oi))+
+    metric('已结算费率／小时',rate(m.F),'最近结算 '+(m.hours==null?'—':m.hours+' 小时周期'));
+  const focused=data.alerts.find(alert=>alert.id===selectedAlert);
+  setupChain(row,focused);
+  for(const id of ['flowEvidence','depthEvidence','watchMarket'])get(id).hidden=false;
+  const watch=get('watchMarket');
+  watch.textContent=data.watched?'移出自选':'加入自选';
+  watch.onclick=()=>update('watch',{pair:row.pair,enabled:!data.watched});
+  get('detailFlow').innerHTML=flowMetrics(row.flow);
+  renderDepth(data);
+  get('frozenEvidence').hidden=!focused;
+  if(focused){
+    const saved=focused.evidence||{}, analysis=saved.analysis||{};
+    get('frozenRules').innerHTML='<p class="small">'+escape(fmtTime(focused.bar_ms)+' · '+num(focused.price)+' '+row.quote+' · '+coverageText(saved))+'</p>'+
+      evidenceTable(analysis.rules||[],analysis.metrics||{},saved.quote||row.quote)+
+      (saved.flow?'<div class="metric-grid">'+flowMetrics(saved.flow)+'</div>':'');
+  }
+  const focus=focused&&focused.bar_ms>=data.chart.actual_first_ms&&focused.bar_ms<=data.chart.actual_last_ms?focused.bar_ms:null;
+  const category=focus?chartCategories.get(focused.model):null;
+  const events=category?[{at:focus,label:'所选'+category.label,color:category.color}]:[];
+  showCandles(data.chart,row.quote,{events,markers,focus});
+  get('chartSignal').textContent='跳到预警';
+  get('chartCaption').textContent=`${data.chart.interval_minutes} 分钟 K 线 · 绿涨红跌 · 下方为成交额。拖动时间轴，滚轮或 ＋／− 缩放。较淡的 K 线仅含该周期内已保存的数据。`;
+  const passed=Object.entries(row.conditions||{}).filter(([key,value])=>value&&(row.core_ready||['A','E'].includes(key))).map(([key])=>names[key]);
+  const missing=rules.filter(rule=>rule.passed===null).map(rule=>rule.name);
+  const failed=rules.filter(rule=>rule.passed===false).map(rule=>rule.name);
+  const paragraphs=[valid?'当前分类：'+GROUPS.find(([key])=>key===group)[1]+'。已满足：'+(passed.join('、')||'暂无异常条件')+'。':'当前数据不足以形成有效判断：'+marketStatus(row)+'。'];
+  if(valid){
+    paragraphs.push('价量版：'+(row.ae_signal?'当前满足放量与价格异常共振。':'当前未同时满足放量与价格异常。'));
+    paragraphs.push(row.core_ready?'完整版：'+(row.core_signal?'当前满足至少两项且含放量或增仓。':'当前未满足模型组合条件。'):'完整版缺少可用的OI／已结算费率历史，不能据此认定没有异常。');
+    if(failed.length)paragraphs.push('未满足的可判定条件：'+failed.join('、')+'。');
+  }
+  if(missing.length)paragraphs.push('尚不可判定：'+missing.join('、')+'。');
+  if(Number.isFinite(row.r24)&&Math.abs(row.r24)>=.2)paragraphs.push('近24小时已变动 '+pct(row.r24)+'，当前异常可能发生在行情已经展开之后，不能称为启动前预警。');
+  paragraphs.push('研究分描述当前证据强度，不是成功概率。后续是否出现真正大变动，以已保存预警的3／7／14天结果为准。');
+  get('detailAnalysis').innerHTML=paragraphs.map(p=>'<p>'+escape(p)+'</p>').join('');
+  get('detailScores').innerHTML='<div><span class="small">价量研究分</span>'+scoreHTML(row,'ae')+'</div><div><span class="small">完整研究分</span>'+scoreHTML(row,'core')+'</div>';
+  const levels=[['7天成交均价',row.vwap7],['30天成交均价',row.vwap30],['近似30天 POC',row.poc30],['70%成交带下沿',row.value_low],['70%成交带上沿',row.value_high],['此前7天高点',row.prior7_high],['此前7天低点',row.prior7_low]];
+  get('detailLevels').innerHTML='<table class="detail-levels"><thead><tr><th>参考价位</th><th>'+escape(row.quote)+'</th><th>现价相对该价</th></tr></thead><tbody>'+levels.map(([label,value])=>'<tr><td>'+label+'</td><td>'+num(value)+'</td><td>'+(value>0&&Number.isFinite(row.price)?pct(row.price/value-1):'—')+'</td></tr>').join('')+'</tbody></table>';
+  get('detailRules').innerHTML=evidenceTable(rules,m,row.quote)+'<p class="small">A：成交额≥此前30天小时中位数的2倍且≥P95；E：1小时绝对涨跌≥此前30天P95；OB：OI数量4小时增加≥10%且≥P95。OI与已结算费率延迟5分钟使用。</p>';
+  if(!selectedCoin){
+    get('detailAlertCount').textContent=data.alerts.length?'显示本机保存的最近 '+data.alerts.length+' 条预警；评分与事件门槛在触发时冻结。':'该币尚无本机保存的实时预警。当前满足条件不等于已经发出新提醒。';
+    get('detailAlerts').innerHTML=data.alerts.map(alertHTML).join('');
+  }
+  get('detailSource').innerHTML=[
+    '现货来源 '+marketVenue(row)+' · '+row.pair+'。合约数据在对应市场核对后参与判断。',
+    '30天OHLC覆盖：'+(Number.isFinite(coverage.ohlc_fraction_30d)?(coverage.ohlc_fraction_30d*100).toFixed(1)+'%':'—')+'；已保存 '+(coverage.available_5m??'—')+' / '+(coverage.expected_30d_5m??8640)+' 根；可用区间有成交占比 '+pct(coverage.active_fraction_available)+'。',
+    '资金费率最近可用时间（含5分钟延迟）：'+fmtTime(m.funding_known_ms)+'；该期已结算费率 '+rate(m.settled_rate)+'。',
+    '代币链标识：'+(row.chain||'暂无')+'；合约地址：'+(row.contract||'暂无')+'。',
+    row.spot_error?'现货接口：'+row.spot_error:row.derivative_error?'衍生品接口：'+row.derivative_error:'本次未记录接口错误；仍以各项历史和新鲜度状态为准。',
+    '当前范围只展示本机已保存的数据。POC按5分钟成交均价近似分桶，不是逐笔筹码或庄家成本。'
+  ].map(p=>'<div>'+escape(p)+'</div>').join('');
+}
+
+function renderSignalDetail(data,markers=[]){
+  renderObservations(null);
+  const r=data.signal,q=data.quote;
+  const source=data.venue+' USDT 永续';
+  get('chartSignal').textContent='跳到信号';
+  const archived=data.mode==='demo';
+  const quoteLabel=archived?'演示收盘价':q&&Date.now()-q.at>60_000?'最近报价（已过期）':'最新成交价';
+  const quoteCard=metric(quoteLabel,q?num(q.price)+' USDT':'—',q?fmtTime(q.at)+' 香港时间':'等待同市场报价');
+  get('feedStatus').textContent=(archived?'历史演示 · ':'')+source+' · 香港时间';
+  const lastCandle=data.chart.points.at(-1);
+  const chartStatus=data.error?'行情暂未更新':data.chart.pending?(lastCandle?'显示最近已保存的 K 线':'等待 K 线数据'):'';
+  get('detailFeedback').textContent=[chartStatus,data.chart.has_gaps?'K 线区间内有缺口':''].filter(Boolean).join(' · ');
+  if(!r){
+    const points=data.chart.points, last=points.at(-1);
+    get('detailMetrics').innerHTML=quoteCard+metric('K 线收盘价',last?num(last.close)+' USDT':'—',last?fmtTime(last.time)+' 香港时间':'')+
+      (last?[['开盘',last.open],['最高',last.high],['最低',last.low],['成交量',last.quote]].map(([label,value])=>metric(label,num(value))).join(''):'');
+    showCandles(data.chart,'USDT',{markers,volumeLabel:data.chart.volume_label});
+    get('chartCaption').textContent=`${data.chart.interval_minutes} 分钟已收盘永续 K 线 · 拖动时间轴，滚轮或 ＋／− 缩放。`;
+    get('detailAnalysis').textContent='从下方选择一条信号，可在图中查看确认时间、计划入场、止损和目标。';
+    get('detailScores').innerHTML='';get('detailLevels').textContent='选择信号后显示对应计划价位。';
+    get('detailTiming').textContent=last?'K 线收盘 '+fmtTime(last.time)+' · 香港时间':'';
+    get('detailSource').textContent=source+'公开成交行情。';
+    return;
+  }
+  const plan=signalCards.levels(r);
+  const levels=[['计划入场',plan.entry,'#256ba1'],['止损',plan.stop,'#b84941'],[Number.isFinite(plan.tp2)?'目标一':'目标',plan.tp1,'#187b66'],['目标二',plan.tp2,'#23715a']]
+    .filter(([,value])=>Number.isFinite(value)).map(([label,price,color])=>({label,price,color}));
+  const events=[{at:r.at,label:'信号确认',color:'#725b9b'}];
+  if(r.triggered_at)events.push({at:r.triggered_at,label:'入场触发',color:'#256ba1'});
+  if(r.tp1_at)events.push({at:r.tp1_at,label:'目标一确认',color:'#187b66'});
+  if(r.status_at>r.at&&!['pending','triggered','tp1'].includes(r.status)){
+    const sameTime=events.find(event=>event.at===r.status_at);
+    if(sameTime)sameTime.label+='／'+data.status;
+    else events.push({at:r.status_at,label:data.status,color:'#8a6536'});
+  }
+  events.sort((a,b)=>a.at-b.at);
+  get('detailTitle').textContent=r.symbol+' · 币种详情';
+  get('detailIdentity').textContent=source+' · '+r.module+' · '+r.method;
+  get('detailTiming').textContent='信号确认 '+fmtTime(r.at)+' · 香港时间';
+  const status=data.mode==='demo'?'demo':r.status||'pending';
+  get('detailMetrics').innerHTML=quoteCard+
+    metric('方向',r.direction===1?'做多':'做空',r.tf+' 分钟 · '+r.order+'入场')+
+    `<div class="metric"><span class="small">跟踪状态</span><div>${signalCards.statusBadge(status,data.mode==='demo'?undefined:data.status)}</div><span class="small">${r.status_at?escape(fmtTime(r.status_at)):''}</span></div>`+
+    levels.map(level=>metric(level.label,num(level.price)+' USDT')).join('');
+  showCandles(data.chart,'USDT',{events,levels,markers,focus:r.at,volumeLabel:data.chart.volume_label});
+  get('chartCaption').textContent=`${data.chart.interval_minutes} 分钟已收盘永续 K 线 · 拖动时间轴，滚轮或 ＋／− 缩放。“跳到信号”定位信号确认时间。`;
+  get('detailAnalysis').innerHTML=signalCards.metrics(r)+[r.method+' · '+r.module+' · '+r.tf+' 分钟',
+    signalCards.structureNote(r),'信号确认 '+fmtTime(r.at),'计划有效期至 '+fmtTime(r.expires),
+    r.triggered_at?'入场触发确认 '+fmtTime(r.triggered_at):'',r.tp1_at?'第一目标确认 '+fmtTime(r.tp1_at):'',
+    '当前跟踪 '+data.status+(r.status_at?' · '+fmtTime(r.status_at):''),r.detail||'']
+    .filter(Boolean).map(line=>'<p>'+escape(line)+'</p>').join('');
+  get('detailScores').innerHTML=[['相对成交量',r.volume_ratio,'×'],['K 线区间比',r.range_ratio,'×']]
+    .filter(([,value])=>Number.isFinite(value)).map(([label,value,unit])=>metric(label,value.toFixed(2)+unit)).join('');
+  get('detailLevels').innerHTML='<table class="detail-levels"><thead><tr><th>计划价位</th><th>USDT</th></tr></thead><tbody>'+
+    levels.map(level=>'<tr><td>'+escape(level.label)+'</td><td>'+num(level.price)+'</td></tr>').join('')+'</tbody></table>';
+  get('detailSource').textContent=source+'公开成交行情。图上记录的是信号确认、计划价位与按行情推定的跟踪状态。';
+}
+
+function renderCoin(data, days=Number(get('detailDays').value||3)){
+  const isSpot=data.selected==='spot';
+  const previous=coinDisplay;
+  const focusChanged=previous&&(isSpot?previous.alert!==selectedAlert:previous.signal!==selectedSignal);
+  if(!previous||previous.market!==data.selected||previous.days!==days){
+    chartViewport=null;
+    candleFocus=null;
+  }
+  get('chartTitle').textContent=isSpot?'现货 K 线与成交额':'永续 K 线与成交量';
+  get('analysisTitle').textContent=isSpot?'异动判断与研究评分':data.data.signal?'信号与跟踪记录':'永续行情概览';
+  get('levelsTitle').textContent=isSpot?'市场参考价位':'计划价位';
+  get('levelsHint').textContent=isSpot?'成交均价与近似成交密集区。':'计划价位以信号确认时的记录为准。';
+  get('rulesSection').hidden=!isSpot;
+  const markers=categoryMarkers(data.records,data.alerts);
+  if(isSpot){
+    renderDetail(data.data,markers);
+    get('feedStatus').textContent=marketVenue(data.spot||data.data.market)+' · 香港时间';
+  }else{
+    renderSignalDetail(data.data,markers);
+    renderObservations(data.spot);
+  }
+  if(focusChanged&&chartViewport&&chartAnnotations.focus){
+    const at=chartAnnotations.focus;
+    if(at<chartViewport.start||at>chartViewport.start+chartViewport.span){
+      setChartViewport(at-chartViewport.span*.65,chartViewport.span);
+      candleFocus=null;
+      drawCandles();
+    }
+  }
+  coinDisplay={market:data.selected,days,signal:selectedSignal,alert:selectedAlert};
+  get('detailTitle').textContent=data.symbol+' · 币种详情';
+  get('detailIdentity').textContent=[data.spot?.name,isSpot?data.spot?.pair:data.perp?.venue+' '+data.perp?.symbol+' 永续',data.data.signal?.method].filter(Boolean).join(' · ');
+  if(data.signal_missing)get('detailFeedback').textContent='该信号已不可用，正在显示当前币种行情。';
+  const spot=data.spot, perp=data.perp;
+  const markets=[spot&&['spot',marketSource(spot)==='spot'?'币安现货':'币安 Alpha 现货',spot.price,spot.quote,spot.bar_ms,!spot.fresh||Date.now()-spot.bar_ms>600000],
+    perp&&['perp',perp.venue+' USDT 永续',perp.quote?.price,'USDT',perp.quote?.at,Date.now()-perp.quote?.at>60000]].filter(Boolean);
+  const marketLinks=markets.map(([key,label,value,quote,at,stale])=>
+    `<a class="coin-market" aria-current="${key===data.selected}" href="${escape(coinHref(data.coin,key,detailOrigin,selectedSignal,selectedAlert))}"><strong>${escape(label)}</strong><small>${num(value)} ${escape(quote)}${at?' · '+escape(fmtTime(at)):''}${at&&stale?' · 历史报价':''}</small></a>`).join('');
+  const menu=get('detailMarkets');
+  if(cardMarkup.get(menu)!==marketLinks){menu.innerHTML=marketLinks;cardMarkup.set(menu,marketLinks);}
+  get('alertsSection').hidden=false;
+  get('contractRecordsPanel').hidden=!perp;
+  get('spotRecordsPanel').hidden=!spot;
+  if(!isSpot&&data.data.signal)signalCards.markReviewed(selectedSignal);
+  const records=data.records.map(record=>{
+    const label=record.module+' · '+record.method+' · '+(record.direction===1?'做多':'做空');
+    const plan=signalCards.levels(record);
+    const demo=data.data.mode==='demo';
+    const status=demo?'demo':record.status||'pending';
+    return {key:record.signal_id,reviewId:record.signal_id,status,statusAt:record.status_at||record.at,html:`<h3><a href="${escape(coinHref(data.coin,'perp',detailOrigin,record.signal_id))}">${escape(label)}</a></h3>
+      <p class="small signal-card-meta">${escape(fmtTime(record.at))} · ${record.tf} 分钟 · ${signalCards.statusBadge(status,demo?undefined:record.status_label)}${signalCards.badge}</p>
+      ${signalCards.metrics(record)}
+      <p class="small">入场 ${num(plan.entry)} · 止损 ${num(plan.stop)} · 目标 ${num(plan.tp1)}${Number.isFinite(plan.tp2)?' / '+num(plan.tp2):''}</p>
+      <div class="signal-card-actions">${signalCards.markButton(record.signal_id,false)}</div>`};
+  });
+  syncDetailCards(get('contractRecords'),records.length?records:[{key:'empty',empty:true,html:'暂无该币的 PA／ICT／A2 信号记录。'}]);
+  get('detailAlertCount').textContent=data.alerts.length?'最近 '+data.alerts.length+' 条 · 结果按预警时记录的门槛判断。':'暂无该市场的实时预警。';
+  syncDetailCards(get('detailAlerts'),data.alerts.map(alert=>({key:alert.id,html:alertContent({...alert,pair:spot?.pair,
+    link:coinHref(data.coin,'spot',detailOrigin,'',alert.id),display_symbol:data.symbol,quote:spot?.quote})})));
+  markSelectedRecord();
+}
+
+async function refreshDetail(interactive=false){
+  if(!selectedCoin&&!selectedPair&&!selectedSignal)return;
+  const days=Number(get('detailDays').value||3);
+  const endpoint=selectedCoin?'/api/coin?coin='+encodeURIComponent(selectedCoin)+'&market='+encodeURIComponent(selectedMarket||'')+(selectedSignal?'&signal='+encodeURIComponent(selectedSignal):''):
+    selectedSignal?'/api/signal/market?signal='+encodeURIComponent(selectedSignal):'/api/alpha/market?pair='+encodeURIComponent(selectedPair);
+  const url=endpoint+'&days='+days;
+  if(!interactive&&detailRequest?.url===url)return;
+  detailRequest?.controller?.abort();
+  const requested=++detailRevision;
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  detailRequest={url,controller};
+  if(interactive)get('detailSwitchStatus').textContent='正在更新…';
+  try{
+    const response=await fetch(url,{cache:'no-store',signal:controller?.signal});
+    const data=await response.json();
+    if(!response.ok)throw Error(data.error||'币种详情暂时不可读');
+    if(requested!==detailRevision)return;
+    keepRecordPosition(()=>{
+      if(data.coin)renderCoin(data,days);
+      else (data.kind==='signal'?renderSignalDetail:renderDetail)(data);
+      get('detailSwitchStatus').textContent='';
+    });
+  }catch(error){
+    if(requested!==detailRevision||error.name==='AbortError')return;
+    get('detailSwitchStatus').textContent='更新失败，保留上一条详情。';
+    if(!coinDisplay)get('detailFeedback').textContent='更新失败：'+error.message;
+  }finally{
+    if(requested===detailRevision)detailRequest=null;
+  }
+}
+
+function route(){
+  let pair='', signal='', coin='', market='', origin='', alert='';
+  try{
+    const [path,query='']=(window.location?.hash||'').split('?',2);
+    const match=/^#\/(market|signal|coin)\/([^/]+)$/.exec(path);
+    if(match?.[1]==='market')pair=decodeURIComponent(match[2]);
+    if(match?.[1]==='signal'&&!radarOnly)signal=decodeURIComponent(match[2]);
+    if(match?.[1]==='coin'){
+      coin=decodeURIComponent(match[2]);
+      const params=new URLSearchParams(query);
+      market=radarOnly||params.get('market')==='spot'?'spot':'perp';
+      const from=params.get('from');
+      origin=!radarOnly&&(from==='signals'||from==='marked')?from:'alpha';
+      signal=radarOnly?'':params.get('signal')||'';
+      alert=params.get('alert')||'';
+    }
+  }catch(error){pair='';signal='';coin='';}
+  if(pair===selectedPair&&signal===selectedSignal&&coin===selectedCoin&&market===selectedMarket&&origin===detailOrigin&&alert===selectedAlert)return;
+  const sameCoin=Boolean(coin)&&coin===selectedCoin;
+  const marketChanged=market!==selectedMarket||(!coin&&Boolean(signal)!==Boolean(selectedSignal));
+  selectedPair=pair;selectedSignal=signal;selectedCoin=coin;selectedMarket=market;detailOrigin=origin;selectedAlert=alert;detailRevision++;
+  detailRequest?.controller?.abort();
+  detailRequest=null;
+  const detail=Boolean(pair||signal||coin);
+  if(detail){
+    const fromSignals=origin==='signals'||(!coin&&signal);
+    get('detailBack').href=origin==='marked'?'/#/marked':fromSignals?'/':'/alpha';
+    get('detailBack').textContent=origin==='marked'?'← 返回已标记信号':fromSignals?'← 返回 PA／ICT／A2 信号':'← 返回市场监测';
+  }
+  if(sameCoin){
+    if(marketChanged)get('detailDays').value=market==='perp'?'1':'3';
+    markSelectedRecord();
+    refreshDetail(true);
+    return;
+  }
+  coinDisplay=null;
+  showCandles(null,'');
+  get('homeView').hidden=detail;get('detailView').hidden=!detail;
+  get('pageTitle').textContent=detail?'币种行情':'山寨币暴涨暴跌观察';
+  window.scrollTo?.(0,0);
+  if(detail){
+    if(marketChanged)get('detailDays').value=market==='perp'||(!coin&&signal)?'1':'3';
+    get('chartTitle').textContent=signal?'永续 K 线与成交量':'现货 K 线与成交额';
+    get('analysisTitle').textContent=signal?'信号与跟踪记录':'当前判断与研究评分';
+    get('levelsTitle').textContent=signal?'计划价位':'市场参考价位';
+    get('levelsHint').textContent=signal?'计划价位固定于信号确认时。':'成交均价与近似成交密集区。';
+    get('rulesSection').hidden=Boolean(signal);get('alertsSection').hidden=Boolean(signal);get('observationSection').hidden=true;
+    for(const id of ['flowEvidence','depthEvidence','watchMarket','frozenEvidence','chainEvidence'])get(id).hidden=true;
+    chainSelection='';
+    get('watchFeedback').textContent='';
+    get('feedStatus').textContent=signal?'正在读取永续信号与行情…':get('feedStatus').textContent;
+    get('detailTitle').textContent='币种详情';get('detailIdentity').textContent=coin||pair;get('detailTiming').textContent='';
+    for(const id of ['detailMarkets','detailMetrics','detailAnalysis','detailScores','detailLevels','detailRules','contractRecords','detailAlerts','detailSource'])get(id).innerHTML='';
+    get('detailFeedback').textContent='正在读取币种数据…';get('detailAlertCount').textContent='';get('chartCaption').textContent='';get('candleReadout').textContent='正在读取 K 线…';get('detailSwitchStatus').textContent='';
+    refreshDetail();
+  }
+}
+
+async function refresh(){
+  if(!radarOnly)void signalCards.pollMarkedStatuses?.();
+  if(selectedCoin||selectedSignal){await refreshDetail();setTimeout(refresh,5000);return;}
+  const requested=revision;
+  try{
+    const response=await fetch('/api/alpha',{cache:'no-store'});
+    if(!response.ok)throw Error('无法连接本机异动观察服务');
+    const data=await response.json();
+    if(requested===revision&&!selectedSignal&&!selectedCoin){state=data;render();if(selectedPair)refreshDetail();}
+  }catch(error){
+    if(requested===revision){if(state)render();get('feedStatus').textContent=error.message;}
+  }
+  setTimeout(refresh,5000);
+}
+
+async function update(action,value){
+  if(busy)return;
+  busy=true;
+  const message=get(action==='watch'?'watchFeedback':'message');
+  message.textContent='';
+  if(action==='watch')get('watchMarket').disabled=true;
+  else render();
+  try{
+    const response=await fetch('/api/alpha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,value})});
+    const data=await response.json();
+    if(!response.ok)throw Error(data.error||'设置保存失败');
+    revision++;
+    state=data;
+    message.textContent=action==='clear'?'已清空预警':'设置已保存';
+    if(action==='watch')await refreshDetail(true);
+  }catch(error){message.textContent=error.message;}
+  finally{
+    busy=false;
+    if(action==='watch')get('watchMarket').disabled=false;
+    else render();
+  }
+}
+
+get('pause').onclick=()=>update('pause',!state.paused);
+get('threshold').onchange=event=>update('threshold',Number(event.target.value));
+get('clear').onclick=()=>{if(window.confirm('清空本页的实时异动预警？'))update('clear',true);};
+get('prev').onclick=()=>{page--;render();};
+get('next').onclick=()=>{page++;render();};
+get('observationFilter').innerHTML='<option value="">全部观察</option><option value="any">任一规则命中</option>'+
+  observationRules.map(([key,name])=>`<option value="${key}">${name}</option>`).join('');
+for(const id of ['query','direction','readiness','signalGroup','observationFilter','sort'])get(id).oninput=()=>{page=0;render();};
+get('sourceFilter').onchange=()=>{page=0;render();};
+get('watchFilter').onchange=()=>{page=0;render();};
+get('showGroups').onclick=()=>selectMarketPanel('signalGroups');
+get('showMarkets').onclick=()=>selectMarketPanel('marketTable');
+get('showAlerts').onclick=()=>selectMarketPanel('alertPanel');
+get('signalGroups').onclick=event=>{const key=event.target.closest?.('[data-more-group]')?.dataset.moreGroup;if(key){groupLimits[key]=(groupLimits[key]||6)+6;render();}};
+get('detailDays').onchange=()=>{
+  if(!selectedCoin){chartViewport=null;candleFocus=null;}
+  refreshDetail(true);
+};
+get('detailView').onclick=event=>{
+  const link=event.target.closest?.('a[href^="/coin#/coin/"]');
+  if(!link||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+  if(!selectedCoin||!link.hash.startsWith('#/coin/'+encodeURIComponent(selectedCoin)+'?'))return;
+  event.preventDefault();
+  if(window.location.hash===link.hash)return;
+  window.history.pushState(null,'',link.href);
+  route();
+};
+window.addEventListener?.('popstate',route);
+window.addEventListener?.('hashchange',route);
+route();
+if(selectedCoin||selectedSignal)setTimeout(refresh,5000);else refresh();
+</script>
+</body></html>
