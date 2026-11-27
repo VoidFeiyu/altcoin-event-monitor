@@ -10,6 +10,8 @@ After installing requirements, open `start-monitor.bat` or run `python -m klineb
 
 The radar monitors Binance Spot and Alpha with coverage indicators, frozen alert evidence, taker flow and BTC context. It samples order books for watchlist assets and fresh alerts. Supported Ethereum and BNB Smart Chain assets can load V3 pool events on demand. The desktop interface is still available with the command below.
 
+The Anomaly history view combines alerts for the same market and candle. It shows 1, 6 and 24 hour closes, the first-day close range, and 3, 7 and 14 day outcomes. It backfills from locally retained candles and preserves an archived path with the evidence. Clearing live alerts leaves the history available.
+
 ## Install and run
 
 Download the source and install Python 3.12 with Tcl/Tk. From the project directory, run these commands in PowerShell.

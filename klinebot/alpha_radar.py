@@ -11,6 +11,7 @@ from .alt_monitor_core import (BAR_MS, DAY_MS, TOKENS, Store, evaluate_latest,
 from .alt_monitor_data import PublicClient, PublicDataError, seed_local
 from .alt_event_score import latest_research_scores
 from .alpha_market_analysis import CHART_MINUTES, book_evidence, chart_series, market_analysis, market_flow
+from .alpha_history import EventHistory
 from .alpha_observations import PAIRED_TOKENS, observations
 from .public_request_gate import MarketRateLimit, PublicRequestGate
 
@@ -92,6 +93,7 @@ class PacedAlphaClient(PublicClient):
 class AlphaRadar:
     def __init__(self, directory, stop, client=None, cleared=0, futures_requests=None):
         self.store = Store(directory,allow_market_pairs=True)
+        self.history = EventHistory(self.store)
         self.stop = stop
         self.spot_requests = PublicRequestGate(PUBLIC_INTERVAL,Path(directory)/'alpha.cooldown')
         self.exchange_spot_requests = PublicRequestGate(PUBLIC_INTERVAL,Path(directory)/'spot.cooldown')
@@ -241,6 +243,7 @@ class AlphaRadar:
                         if state.get(model+'_signal') and self.store.record(key,model,state['bar_ms'],observed,state['price'],self.prefs['threshold'],state):
                             self.book_priority[pair] = observed + 60*60_000
             self.store.track(asof,symbol=key)
+            self.history.refresh(key,asof)
             self.store.prune(key,asof-34*DAY_MS)
             return safe(state)
         except MarketRateLimit:
@@ -304,6 +307,11 @@ class AlphaRadar:
         try:
             seed_local(self.store,now_ms())
         except (OSError,ValueError,sqlite3.Error):
+            pass
+        try:
+            self.history.backfill(now_ms(),self.stop)
+        except (OSError,ValueError,sqlite3.Error):
+            # Live updates will retry archival for markets as they are scanned.
             pass
         threading.Thread(target=self.run_books,daemon=True,name='radar-books').start()
         pending, due = {}, {}
