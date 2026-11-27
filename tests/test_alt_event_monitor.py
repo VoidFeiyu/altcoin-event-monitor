@@ -13,6 +13,7 @@ import pandas as pd
 from klinebot.alt_monitor_core import (BAR_MS, DAY_MS, ROOT, TOKENS, Store, evaluate_latest,
                                       feature_frame, market_profile, now_ms, outcome, parse_bar)
 from klinebot.alt_monitor_data import Monitor, PublicDataError
+from klinebot.alpha_catalog import alpha_catalog, spot_catalog
 
 
 def sample(days=34, end=None, jump=False):
@@ -183,6 +184,35 @@ class FakeClient:
 
 
 class ServiceTests(unittest.TestCase):
+    def test_market_directories_preserve_source_chain_and_quote(self):
+        def pair(base, quote, **changes):
+            return dict(symbol=base + quote, baseAsset=base, quoteAsset=quote,
+                        status='TRADING', isSpotTradingAllowed=True) | changes
+
+        tokens = [dict(alphaId='ALPHA_50', symbol='LIVE', chainId='SOL', contractAddress='SolanaAddress')]
+        alpha = alpha_catalog(tokens, [pair('ALPHA_50', 'USDC'), pair('ALPHA_50', 'USDT')])
+        spot = spot_catalog([pair('LIVE', 'USDC'), pair('LIVE', 'USDT'), pair('ALT', 'BTC'),
+                             pair('INACTIVE', 'USDT', status='BREAK')])
+        self.assertEqual(set(alpha) | set(spot), {'ALPHA_50USDT', 'SPOT:LIVEUSDT', 'SPOT:ALTBTC'})
+        self.assertEqual(alpha['ALPHA_50USDT']['contract'], 'SolanaAddress')
+        self.assertEqual(spot['SPOT:LIVEUSDT']['source'], 'spot')
+
+    def test_market_rotation_resumes_and_spot_alerts_use_market_keys(self):
+        with tempfile.TemporaryDirectory() as temp:
+            store = Store(Path(temp), allow_market_pairs=True)
+            pairs = {f'SPOT:COIN{i}USDT': {'symbol': f'COIN{i}'} for i in range(27)}
+            store.set('alpha-market-catalog', pairs)
+            store.set('alpha-scan-cursor', 24)
+            monitor = Monitor(store, universe=True)
+            monitor.identity_at = now_ms()
+            keys = list(monitor.catalog)
+            batch, cursor = monitor._universe_targets(None)
+            self.assertEqual(cursor, 24)
+            self.assertEqual(batch, keys[24:] + keys[:21])
+            at = now_ms() // BAR_MS * BAR_MS
+            alert_id = store.record(keys[24], 'ae', at, at, 1, .2, {'triggers': ['现货放量']})
+            self.assertEqual(store.alerts(symbol=keys[24])[0]['id'], alert_id)
+
     def test_derivatives_failure_leaves_ae_independent_and_persistent(self):
         with tempfile.TemporaryDirectory() as temp:
             store=Store(Path(temp));end=(now_ms()-20000)//BAR_MS*BAR_MS

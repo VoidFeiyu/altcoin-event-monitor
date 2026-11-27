@@ -122,6 +122,11 @@ class Store:
             r = db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()
         return json.loads(r['value']) if r else default
 
+    def snapshots(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT key,value FROM state WHERE key GLOB 'snapshot:*'").fetchall()
+        return {row['key'].removeprefix('snapshot:'): json.loads(row['value']) for row in rows}
+
     def save_bars(self, symbol: str, rows: list[dict], source='alpha-live'):
         if not rows:
             return
@@ -167,7 +172,7 @@ class Store:
         return series, fund
 
     def record(self, symbol: str, model: str, at: int, observed: int, price: float, threshold: float, evidence: dict) -> str | None:
-        valid_market = self.allow_market_pairs and re.fullmatch(r'ALPHA_\d+(USDT|USDC|U)',symbol)
+        valid_market = self.allow_market_pairs and re.fullmatch(r'(?:ALPHA_\d+(?:USDT|USDC|U)|SPOT:[^\s:]{1,48})', symbol)
         if (symbol not in TOKENS and not valid_market) or model not in ('ae', 'core') or at % BAR_MS or at > observed:
             raise ValueError('预警身份或时间无效')
         if not math.isfinite(price) or price <= 0 or threshold not in (.1, .2, .3, .5):
@@ -214,14 +219,16 @@ class Store:
     def export(self, path: Path, *, translate=str):
         with Path(path).open('w', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
-            headers = ('币种', '模型', '预警K线结束UTC', '实际扫描UTC', '预警价USDT', '冻结幅度',
-                       '触发依据', '3天结果', '7天结果', '14天结果', '规则版本')
+            headers = ('币种', '模型', '预警K线结束UTC', '实际扫描UTC', '预警价', '冻结幅度',
+                       '触发依据', '3天结果', '7天结果', '14天结果', '规则版本', '市场标识', '计价币')
             writer.writerow(map(translate, headers))
             for a in self.alerts(100000):
                 dt = lambda t: pd.Timestamp(t, unit='ms', tz='UTC').isoformat()
-                writer.writerow([a['symbol'], a['model'], dt(a['bar_ms']), dt(a['observed_ms']), a['price'], a['threshold'],
+                market = a['evidence'].get('market', {})
+                writer.writerow([market.get('symbol', a['symbol']), a['model'], dt(a['bar_ms']), dt(a['observed_ms']), a['price'], a['threshold'],
                                  translate('、').join(map(translate, a['evidence'].get('triggers', []))),
-                                 *(translate(a['outcomes'][str(h)]['status']) for h in (72, 168, 336)), a['version']])
+                                 *(translate(a['outcomes'][str(h)]['status']) for h in (72, 168, 336)), a['version'],
+                                 a['symbol'], market.get('quote', 'USDT')])
 
 
 def _asof(series: pd.Series, ix: pd.DatetimeIndex, prior=False):

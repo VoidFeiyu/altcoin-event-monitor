@@ -1,4 +1,4 @@
-"""Native Windows four-token read-only event monitor. Run with -m klinebot.alt_monitor_app."""
+"""Native Windows read-only market monitor. Run with -m klinebot.alt_monitor_app."""
 from __future__ import annotations
 
 import argparse
@@ -19,10 +19,11 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from .alt_monitor_core import BAR_MS, DAY_MS, DIRECTORY, ROOT, TOKENS, Store, now_ms, payload
-from .alt_monitor_data import Monitor, seed_local
+from .alt_monitor_data import Monitor
 from .alt_monitor_i18n import GUIDE_TEXT, LANGUAGES, system_language, translate, translate_message
 from .alt_opportunity_ui import OpportunityPages
-from .evaa_replay_ui import EvaaReplayPage
+from .chain_replay import Market
+from .chain_replay_ui import ChainReplayPage
 
 BG = '#101824'
 PANEL = '#192535'
@@ -59,16 +60,16 @@ def research_cases():
 class App:
     def __init__(self, root: tk.Tk, directory: Path = DIRECTORY, language=None):
         self.root = root
-        self.store = Store(directory)
+        self.store = Store(directory, allow_market_pairs=True)
         saved_language = self.store.get('language')
         self.language = language or (saved_language if saved_language in LANGUAGES else system_language())
         self.events = queue.Queue()
-        self.monitor = Monitor(self.store, self.events.put)
+        self.monitor = Monitor(self.store, self.events.put, universe=True)
         self.prepared = False
         self.history = research_cases()
         self.case_map = {}
         self.alert_map = {}
-        self.current_symbol = 'RAVE'
+        self.current_symbol = self.store.get('alpha-selected-market', '')
         self.chart_points = []
         self.chart_title = ''
         self.rows = dict(self.monitor.rows)
@@ -105,8 +106,8 @@ class App:
         self.root.title(self.t('山寨币机会研究台'))
         self.workspace_title.configure(text=self.t('山寨币机会研究台'))
         self.workspace_tabs.tab(self.radar_tab, text=self.t('异动雷达'))
-        self.workspace_tabs.tab(self.evaa_tab, text=self.t('EVAA 事件回放'))
-        self.evaa_replay.relabel()
+        self.workspace_tabs.tab(self.chain_tab, text=self.t('链上事件回放'))
+        self.chain_replay.relabel()
         self.opportunities.relabel()
         self._build()
         self.tabs.select(tab)
@@ -156,35 +157,66 @@ class App:
         self.workspace_tabs.pack(fill='both', expand=True, pady=(14, 0))
         self.radar_tab = ttk.Frame(self.workspace_tabs, padding=(12, 12, 12, 0))
         self.workspace_tabs.add(self.radar_tab, text=self.t('异动雷达'))
-        self.evaa_tab = ttk.Frame(self.workspace_tabs, padding=12)
-        self.workspace_tabs.add(self.evaa_tab, text=self.t('EVAA 事件回放'))
-        self.evaa_replay = EvaaReplayPage(self.root, self.evaa_tab, self.store, hk, self.t)
+        self.chain_tab = ttk.Frame(self.workspace_tabs, padding=12)
+        self.workspace_tabs.add(self.chain_tab, text=self.t('链上事件回放'))
+        self.chain_replay = ChainReplayPage(self.root, self.chain_tab, self.store, hk, self.t)
         self.workspace_tabs.bind('<<NotebookTabChanged>>', self._refresh_workspace)
-        self.opportunities = OpportunityPages(self.root, self.workspace_tabs, self.store, hk, self.t)
+        self.opportunities = OpportunityPages(self.root, self.workspace_tabs, self.store, hk, self.t,
+                                              lambda: self.chain_replay.market,
+                                              lambda: self.workspace_tabs.select(self.chain_tab))
 
     def _refresh_workspace(self, event=None):
-        if self.workspace_tabs.select() == str(self.evaa_tab):
-            self.evaa_replay.refresh_anchors()
+        if self.workspace_tabs.select() == str(self.chain_tab):
+            self.chain_replay.refresh_anchors()
+        elif hasattr(self, 'opportunities'):
+            self.opportunities.refresh_market()
 
-    def open_evaa_replay(self):
+    def open_chain_replay(self, symbol):
         selected = self.alert_tree.selection()
         alert = self.alert_map.get(selected[0]) if selected else None
-        self.evaa_replay.refresh_anchors(alert['id'] if alert and alert['symbol'] == 'EVAA' else None)
-        self.workspace_tabs.select(self.evaa_tab)
+        if alert and alert['symbol'] != symbol:
+            alert = None
+        row = self.monitor.catalog.get(symbol) or (alert or {}).get('evidence', {}).get('market')
+        try:
+            if row:
+                quote = row['quote'] if row['quote'] in ('USDT', 'USDC') else 'USDT'
+                market = Market(int(row['chain_id']), row['contract'], row['symbol'], quote)
+            elif symbol in TOKENS:
+                market = Market(56, TOKENS[symbol]['contract'], symbol)
+            else:
+                raise ValueError
+        except (ValueError, RuntimeError, KeyError):
+            self.progress.set(self.t('该标的没有已接入的链上回放市场'))
+            return
+        self.chain_replay.show_market(market, alert['id'] if alert else None)
+        self.workspace_tabs.select(self.chain_tab)
 
     def _build(self):
         outer = self.radar_tab
         header = ttk.Frame(outer)
         header.pack(fill='x')
-        ttk.Label(header, text='RAVE / BSB / EVAA / LAB', font=('Microsoft YaHei UI', 13, 'bold')).pack(side='left')
+        self.market_count = tk.StringVar()
+        ttk.Label(header, textvariable=self.market_count, font=('Microsoft YaHei UI', 13, 'bold')).pack(side='left')
         self.mode_text = tk.StringVar(value=self.t('已暂停 · 关闭窗口即停止'))
         if self.monitor.running:
             self.mode_text.set(self.t('监控中 · 关闭窗口即停止'))
         ttk.Label(header, textvariable=self.mode_text, foreground=GREEN).pack(side='right', pady=(9, 0))
-        ttk.Label(outer, text=self.t('观察后续是否真的出现大变动  ·  现货量价与完整版分别判断  ·  时间均为香港时间'), style='Muted.TLabel').pack(anchor='w', pady=(5, 15))
+        picker = ttk.Frame(outer)
+        picker.pack(fill='x', pady=(7, 6))
+        self.market_box = ttk.Combobox(picker, width=34)
+        self.market_box.pack(side='left', padx=(0, 5))
+        self.market_box.bind('<KeyRelease>', self.filter_markets)
+        self.market_box.bind('<<ComboboxSelected>>', self.choose_market)
+        self.market_box.bind('<Return>', self.choose_market)
+        ttk.Button(picker, text=self.t('加入自选'), command=lambda: self.update_watch(True), style='Card.TButton').pack(side='left', padx=4)
+        ttk.Button(picker, text=self.t('移出自选'), command=lambda: self.update_watch(False), style='Card.TButton').pack(side='left', padx=4)
+        ttk.Button(picker, text=self.t('链上回放'), command=lambda: self.open_chain_replay(self.current_symbol), style='Card.TButton').pack(side='left', padx=4)
+        ttk.Button(picker, text=self.t('刷新目录'), command=self.monitor.refresh_catalog, style='Card.TButton').pack(side='right')
+        self.watch_all = tk.BooleanVar(value=self.monitor.watch_all)
+        ttk.Checkbutton(picker, text=self.t('全市场轮扫'), variable=self.watch_all, command=self.change_scan_scope).pack(side='right', padx=7)
 
         controls = ttk.Frame(outer)
-        controls.pack(fill='x', pady=(0, 14))
+        controls.pack(fill='x', pady=(0, 7))
         self.start_button = ttk.Button(controls, text=self.t('暂停监控' if self.monitor.running else '开始监控'),
                                        style='Primary.TButton', command=self.toggle, state='normal' if self.prepared else 'disabled')
         self.start_button.pack(side='left')
@@ -199,36 +231,14 @@ class App:
         self.threshold_box.bind('<<ComboboxSelected>>', self.configure)
         self.sound = tk.BooleanVar(value=bool(self.monitor.settings['sound']))
         ttk.Checkbutton(controls, text=self.t('本机提示音'), variable=self.sound, command=self.configure).pack(side='left', padx=12)
-        ttk.Label(controls, text=self.t('5分钟扫描 · 每币每模型冷却24小时'), style='Muted.TLabel').pack(side='right')
-
-        self.card_frame = ttk.Frame(outer)
-        self.card_frame.pack(fill='x')
-        self.cards = {}
-        for col, symbol in enumerate(TOKENS):
-            self.card_frame.columnconfigure(col, weight=1)
-            box = tk.Frame(self.card_frame, background=PANEL, padx=14, pady=12, highlightthickness=1, highlightbackground='#2b3b50', cursor='hand2')
-            box.grid(row=0, column=col, sticky='nsew', padx=(0 if col == 0 else 8, 0))
-            title_row = tk.Frame(box, background=PANEL)
-            title_row.pack(fill='x')
-            name = tk.Label(title_row, text=symbol, background=PANEL, foreground=TEXT, font=('Segoe UI', 14, 'bold'), anchor='w')
-            name.pack(side='left')
-            if symbol == 'EVAA':
-                ttk.Button(title_row, text=self.t('链上回放'), command=self.open_evaa_replay,
-                           style='Card.TButton').pack(side='right')
-            price = tk.Label(box, text='—', background=PANEL, foreground=TEXT, font=('Segoe UI', 23, 'bold'), anchor='w')
-            price.pack(fill='x', pady=(7, 5))
-            state = tk.Label(box, text=self.t('等待扫描'), background=PANEL, foreground=AMBER, font=('Microsoft YaHei UI', 10), anchor='w')
-            state.pack(fill='x')
-            metrics = tk.Label(box, text=self.t('量比 —   24h —'), background=PANEL, foreground=MUTED, anchor='w')
-            metrics.pack(fill='x', pady=(6, 0))
-            at = tk.Label(box, text=self.t('K线 —'), background=PANEL, foreground=MUTED, anchor='w', font=('Microsoft YaHei UI', 9))
-            at.pack(fill='x', pady=(4, 0))
-            for widget in (box, title_row, name, price, state, metrics, at):
-                widget.bind('<Button-1>', lambda event, s=symbol: self.select_symbol(s))
-            self.cards[symbol] = dict(box=box, price=price, state=state, metrics=metrics, at=at)
+        columns = ('coin', 'chain', 'quote', 'price', 'volume', 'change', 'at', 'state')
+        headings = ('币种', '市场 / 网络', '计价币', '最新价格', '量比', '24h', '盘口时间', '状态')
+        self.watch_tree = self._tree(outer, columns, tuple(self.t(label) for label in headings),
+                                     (105, 120, 80, 110, 75, 85, 135, 210), height=3)
+        self.watch_tree.bind('<<TreeviewSelect>>', self.select_watch)
 
         self.health = tk.StringVar(value=self.t('正在读取已有历史基准…'))
-        self.wrapped_label(outer, textvariable=self.health, foreground=AMBER).pack(fill='x', pady=(10, 12))
+        self.wrapped_label(outer, textvariable=self.health, foreground=AMBER).pack(fill='x', pady=(5, 7))
         self.progress = tk.StringVar(value=self.t('初始化…'))
         footer = ttk.Frame(outer)
         footer.pack(side='bottom', fill='x', pady=(10, 0))
@@ -251,7 +261,7 @@ class App:
         self.alert_tree.bind('<<TreeviewSelect>>', self.select_alert)
         self.empty = ttk.Label(self.live_tab, text=self.t('尚无本机实时预警。历史案例在另一个页面；未触发时不会填造记录。'), style='Muted.TLabel')
         self.empty.pack(anchor='w', pady=5)
-        self.detail = tk.StringVar(value=self.t('点击上方币种卡片查看已保存行情与市场参考价。'))
+        self.detail = tk.StringVar(value=self.t('选择币种查看已保存行情'))
         self.wrapped_label(self.live_tab, textvariable=self.detail, style='Muted.TLabel').pack(fill='x', pady=6)
         self.chart = tk.Canvas(self.live_tab, background='#141f2d', highlightthickness=0, height=195)
         self.chart.pack(fill='both', expand=True, pady=(3, 0))
@@ -285,6 +295,62 @@ class App:
         text.pack(fill='both', expand=True)
         text.insert('1.0', guide)
         text.configure(state='disabled')
+        self.refresh_directory()
+
+    def label_market(self, key):
+        row = self.monitor.catalog.get(key)
+        if not row:
+            return key
+        source = f'Alpha · {row["chain"]} · {row["alpha"]}' if row.get('source', 'alpha') == 'alpha' else 'Binance Spot'
+        return f'{row["symbol"]}/{row["quote"]} · {source}'
+
+    def refresh_directory(self):
+        self.market_labels = {self.label_market(key): key for key in self.monitor.catalog}
+        self.market_box.configure(values=tuple(self.market_labels))
+        if self.current_symbol:
+            self.market_box.set(self.label_market(self.current_symbol))
+        self.market_count.set(self.t('币安现货与 Alpha · {0} 个标的', len(self.market_labels)))
+
+    def filter_markets(self, event):
+        if event.keysym not in ('Return', 'Up', 'Down', 'Escape'):
+            query = self.market_box.get().strip().casefold()
+            self.market_box.configure(values=tuple(label for label, key in self.market_labels.items()
+                                                  if any(query in value.casefold() for value in
+                                                         (label, self.monitor.catalog[key]['contract'], self.monitor.catalog[key]['name']))))
+
+    def choose_market(self, event=None):
+        text = self.market_box.get().strip()
+        key = self.market_labels.get(text)
+        if not key:
+            matches = [key for key, row in self.monitor.catalog.items()
+                       if any(value.casefold() == text.casefold() for value in (row['symbol'], row['name'], row['contract']))]
+            key = matches[0] if len(matches) == 1 else None
+        if not key:
+            self.progress.set(self.t('请从列表选择标的'))
+            return
+        self.select_symbol(key)
+        self._render_all()
+
+    def select_watch(self, event=None):
+        selected = self.watch_tree.selection()
+        if selected and selected[0] != self.current_symbol:
+            self.select_symbol(selected[0])
+
+    def update_watch(self, add):
+        if self.current_symbol not in self.monitor.catalog:
+            self.progress.set(self.t('请选择监测标的'))
+            return
+        keys = list(self.monitor.watch)
+        if add:
+            keys.append(self.current_symbol)
+        else:
+            keys = [key for key in keys if key != self.current_symbol]
+        self.monitor.set_watch(keys, self.watch_all.get())
+        self._render_all()
+
+    def change_scan_scope(self):
+        self.monitor.set_watch(self.monitor.watch, self.watch_all.get())
+        self._render_all()
 
     @staticmethod
     def wrapped_label(parent, **options):
@@ -311,10 +377,18 @@ class App:
         if self.monitor.running:
             self.monitor.pause();self.start_button.configure(text=self.t('开始监控'));self.mode_text.set(self.t('已暂停 · 当前请求结束后停止'))
         else:
+            if not self.monitor.watch and not self.monitor.watch_all:
+                if self.current_symbol not in self.monitor.catalog:
+                    self.progress.set(self.t('请选择监测标的'))
+                    return
+                self.monitor.set_watch([self.current_symbol], False)
             self.monitor.start();self.start_button.configure(text=self.t('暂停监控'));self.mode_text.set(self.t('监控中 · 关闭窗口即停止'))
 
     def scan(self):
-        self.monitor.scan()
+        if self.monitor.watch_all or self.current_symbol not in self.monitor.catalog:
+            self.monitor.scan()
+        else:
+            self.monitor.scan(requested=[self.current_symbol])
 
     def pump(self):
         try:
@@ -326,10 +400,16 @@ class App:
                     self.start_button.configure(state='normal');self.scan_button.configure(state='normal')
                 elif kind == 'progress':
                     self.progress.set(translate_message(self.language, event['text']))
+                elif kind == 'catalog':
+                    self.refresh_directory()
+                    self.chain_replay.refresh_markets()
+                    self.chain_replay.refresh_anchors()
+                    self._render_all()
                 elif kind == 'snapshot':
                     self.rows[event['state']['symbol']] = event['state'];self._render_all()
                 elif kind == 'alert':
-                    self.progress.set(self.t('新预警：{0} · {1}', event["symbol"], self.t('完整版') if event['model'] == 'core' else self.t('价量版')))
+                    self.progress.set(self.t('新预警：{0} · {1}', self.monitor.catalog.get(event['symbol'], {}).get('symbol', event['symbol']),
+                                             self.t('完整版') if event['model'] == 'core' else self.t('价量版')))
                     if event.get('sound'):
                         self.root.bell()
                     self.refresh_alerts()
@@ -355,26 +435,38 @@ class App:
         self.root.after(300, self.pump)
 
     def _render_all(self):
-        fresh = ready = 0
-        errors = []
-        for symbol, widgets in self.cards.items():
-            r = self.rows.get(symbol, {})
-            actual_fresh = r.get('fresh', False) and 0 <= now_ms() - r.get('bar_ms', 0) <= 2 * BAR_MS
-            fresh += bool(actual_fresh)
-            ready += bool(actual_fresh and r.get('core_ready'))
-            widgets['price'].configure(text=number(r.get('price')))
-            text = self.t(r.get('status', '尚未扫描'))
-            if r.get('bar_ms') and not actual_fresh:
-                text = self.t('历史缓存 · 等待新鲜行情')
-            widgets['state'].configure(text=text, foreground=GREEN if actual_fresh and r.get('ae_ready') else AMBER)
-            widgets['metrics'].configure(text=self.t('量比 {0}    24h {1}', number(r.get("V"), 3), percent(r.get("r24"))))
-            widgets['at'].configure(text=self.t('K线 {0}  ·  {1}', hk(r.get("bar_ms")), self.t('完整版就绪') if actual_fresh and r.get('core_ready') else self.t('完整版不足')))
-            if r.get('spot_error'):
-                errors.append(self.t('{0}现货：{1}', symbol, translate_message(self.language, r['spot_error'])))
-            elif r.get('derivative_error'):
-                errors.append(translate_message(self.language, r['derivative_error']))
-        reason = next(iter(dict.fromkeys(errors)), self.t('初次使用需要30天历史基准；扫描会读取缓存并补齐。'))
-        self.health.set(self.t('新鲜现货 {0}/4   ·   完整版就绪 {1}/4   ·   {2}', fresh, ready, reason))
+        if self.monitor.watch_all:
+            updated = sorted(self.rows, key=lambda key: self.rows[key].get('scanned_ms', 0), reverse=True)
+            keys = list(dict.fromkeys([self.current_symbol, *updated, *self.monitor.catalog]))
+        else:
+            keys = list(dict.fromkeys([self.current_symbol, *self.monitor.watch]))
+        keys = [key for key in keys if key]
+        children = self.watch_tree.get_children()
+        current = set(children)
+        for key in current - set(keys):
+            self.watch_tree.delete(key)
+        fresh = 0
+        for index, key in enumerate(keys):
+            r = self.rows.get(key, {})
+            market = self.monitor.catalog.get(key, {})
+            actual_fresh = bool(r.get('fresh') and 0 <= now_ms() - r.get('bar_ms', 0) <= 2 * BAR_MS)
+            fresh += actual_fresh
+            status = self.t(r.get('status', '尚未扫描'))
+            if r.get('bar_ms') and not actual_fresh and not r.get('spot_error'):
+                status = self.t('历史缓存 · 等待新鲜行情')
+            coin = ('★ ' if key in self.monitor.watch else '') + market.get('symbol', key)
+            values = (coin, market.get('chain', '—'), market.get('quote', 'USDT'),
+                      number(r.get('price')), number(r.get('V'), 3), percent(r.get('r24')), hk(r.get('bar_ms')), status)
+            if key not in current:
+                self.watch_tree.insert('', index, iid=key, values=values)
+            else:
+                if tuple(map(str, self.watch_tree.item(key, 'values'))) != tuple(map(str, values)):
+                    self.watch_tree.item(key, values=values)
+        if children != tuple(keys):
+            self.watch_tree.set_children('', *keys)
+        reason = self.rows.get(self.current_symbol, {}).get('spot_error')
+        scope = self.t('每轮最多扫描 24 个，自动轮换') if self.monitor.watch_all else self.t('已选 {0} 个自选币种', len(self.monitor.watch))
+        self.health.set(self.t('新鲜行情 {0} · {1}', fresh, translate_message(self.language, reason) if reason else scope))
 
     def refresh_alerts(self):
         selected = self.alert_tree.selection()
@@ -383,18 +475,28 @@ class App:
         alerts = self.store.alerts()
         for a in alerts:
             self.alert_map[a['id']] = a
-            self.alert_tree.insert('', 'end', iid=a['id'], values=(a['symbol'], self.t('完整版') if a['model']=='core' else self.t('价量版'), hk(a['bar_ms']), number(a['price']),
+            market = a['evidence'].get('market', {})
+            label = f'{market["symbol"]}/{market["quote"]}' if market else a['evidence'].get('display_symbol', a['symbol'])
+            self.alert_tree.insert('', 'end', iid=a['id'], values=(label, self.t('完整版') if a['model']=='core' else self.t('价量版'), hk(a['bar_ms']), number(a['price']),
                                    self.t('、').join(self.t(trigger) for trigger in a['evidence'].get('triggers', [])),
                                    *(self.t(a['outcomes'][str(h)]['status']) for h in (72, 168, 336))))
         self.empty.configure(text=self.t('已保存 {0} 条本机实时预警；结果按各自冻结门槛判断。', len(alerts)) if alerts else self.t('尚无本机实时预警。历史案例在另一个页面；未触发时不会填造记录。'))
         if selected and selected[0] in self.alert_map:self.alert_tree.selection_set(selected[0])
 
     def select_symbol(self, symbol):
+        if not symbol:
+            return
         self.current_symbol = symbol
-        r = self.rows.get(symbol, {})
-        self.detail.set(self.t('{0}  ·  成交均价 7天 {1} / 30天 {2}  ·  近似POC {3} / 70%成交带 {4}—{5}\n前7天高低 {6} / {7}  ·  市场历史参考，非庄家成本', symbol, number(r.get("vwap7")), number(r.get("vwap30")), number(r.get("poc30")), number(r.get("value_low")), number(r.get("value_high")), number(r.get("prior7_high")), number(r.get("prior7_low"))))
+        self.store.set('alpha-selected-market', symbol)
+        self.market_box.set(self.label_market(symbol))
+        if symbol not in self.rows:
+            self.rows[symbol] = self.store.get('snapshot:' + symbol, {})
+        r = self.rows[symbol]
+        friendly = self.monitor.catalog.get(symbol, {}).get('symbol', symbol)
+        self.detail.set(self.t('{0}  ·  成交均价 7天 {1} / 30天 {2}  ·  近似POC {3} / 70%成交带 {4}—{5}\n前7天高低 {6} / {7}  ·  市场历史参考，非庄家成本', friendly, number(r.get("vwap7")), number(r.get("vwap30")), number(r.get("poc30")), number(r.get("value_low")), number(r.get("value_high")), number(r.get("prior7_high")), number(r.get("prior7_low"))))
         raw = self.store.bars(symbol, now_ms()-3*DAY_MS)
-        self.set_chart(raw, self.t('{0} · 最近3天已保存Alpha现货收盘', symbol))
+        market_label = self.label_market(symbol)
+        self.set_chart(raw, self.t('{0} · 最近 3 天已保存的现货收盘价', market_label))
 
     def set_chart(self, frame, title):
         self.chart_points = [] if frame.empty else [(t.timestamp()*1000, float(p)) for t,p in frame.close.items() if pd.notna(p)]
@@ -433,11 +535,14 @@ class App:
     def select_alert(self, event=None):
         selected=self.alert_tree.selection()
         if not selected:return
-        a=self.alert_map[selected[0]]
+        a=self.alert_map.get(selected[0])
+        if not a:return
         self.current_symbol=a['symbol']
-        self.detail.set(self.t('{0} · {1} · 行情 {2} · 实际扫描 {3} · 冻结门槛 ±{4:.0%} · 确认方向为事后结果', a["symbol"], self.t('完整版') if a['model'] == 'core' else self.t('价量版'), hk(a["bar_ms"], True), hk(a["observed_ms"], True), a["threshold"]))
+        friendly = a['evidence'].get('display_symbol', a['symbol'])
+        self.market_box.set(self.label_market(self.current_symbol))
+        self.detail.set(self.t('{0} · {1} · 行情 {2} · 实际扫描 {3} · 冻结门槛 ±{4:.0%} · 确认方向为事后结果', friendly, self.t('完整版') if a['model'] == 'core' else self.t('价量版'), hk(a["bar_ms"], True), hk(a["observed_ms"], True), a["threshold"]))
         raw=self.store.bars(a['symbol'],a['bar_ms']-DAY_MS,min(now_ms(),a['bar_ms']+14*DAY_MS))
-        self.set_chart(raw,self.t('{0} · 该预警前1天至后14天已保存路径', a["symbol"]))
+        self.set_chart(raw,self.t('{0} · 该预警前1天至后14天已保存路径', friendly))
 
     def select_case(self, event=None):
         selected=self.case_tree.selection()
@@ -466,13 +571,13 @@ class App:
         if self.tabs.index(self.tabs.select())==0:self.select_symbol(self.current_symbol)
 
     def export(self):
-        path=filedialog.asksaveasfilename(parent=self.root,title=self.t('导出本机实时预警'),defaultextension='.csv',filetypes=[(self.t('CSV文件'),'*.csv')],initialfile=self.t('四币异动预警.csv'))
+        path=filedialog.asksaveasfilename(parent=self.root,title=self.t('导出本机实时预警'),defaultextension='.csv',filetypes=[(self.t('CSV文件'),'*.csv')],initialfile='alpha-alerts.csv')
         if path:
             self.store.export(Path(path), translate=self.t)
             self.progress.set(self.t('已导出：') + path)
 
     def close(self):
-        self.evaa_replay.close()
+        self.chain_replay.close()
         self.opportunities.close()
         self.monitor.close()
         self.root.destroy()
@@ -488,8 +593,9 @@ def main():
     handler=RotatingFileHandler(args.data_dir/'monitor.log',maxBytes=2_000_000,backupCount=3,encoding='utf-8')
     logging.basicConfig(level=logging.INFO,handlers=[handler],format='%(asctime)s %(levelname)s %(message)s')
     if args.scan_once:
-        store=Store(args.data_dir);seed_local(store,now_ms())
-        m=Monitor(store,lambda event: print(payload(event),flush=True))
+        store=Store(args.data_dir, allow_market_pairs=True)
+        m=Monitor(store,lambda event: print(payload(event),flush=True), universe=True)
+        m.watch_all=True
         m.scan()
         while m.busy:time.sleep(.2)
         return

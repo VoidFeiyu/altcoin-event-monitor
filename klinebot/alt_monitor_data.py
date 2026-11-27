@@ -1,10 +1,11 @@
-"""Public-only collectors and a stoppable four-token monitoring service."""
+"""Public-only collectors and a stoppable market monitoring service."""
 from __future__ import annotations
 
 import csv
 import io
 import json
 import logging
+import sqlite3
 import threading
 import time
 import urllib.error
@@ -17,12 +18,17 @@ import pandas as pd
 
 from .alt_monitor_core import (BAR_MS, DAY_MS, ROOT, TOKENS, Store, evaluate_latest,
                                feature_frame, now_ms, parse_bar, safe)
+from .alpha_catalog import alpha_catalog, spot_catalog
+
+MARKETS_PER_BATCH = 24
+MARKET_SCAN_INTERVAL_MS = 60_000
 
 
 class PublicDataError(RuntimeError):
-    def __init__(self, text, status=None):
+    def __init__(self, text, status=None, retry_after=0):
         super().__init__(text)
         self.status = status
+        self.retry_after = retry_after
 
 
 class PublicClient:
@@ -40,6 +46,8 @@ class PublicClient:
             'tokens': 'https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list',
             'pairs': 'https://www.binance.com/bapi/defi/v1/public/alpha-trade/get-exchange-info',
             'alpha': 'https://www.binance.com/bapi/defi/v1/public/alpha-trade/klines',
+            'spot_pairs': 'https://data-api.binance.vision/api/v3/exchangeInfo',
+            'spot': 'https://data-api.binance.vision/api/v3/klines',
             'perp_klines': 'https://fapi.binance.com/fapi/v1/klines',
             'oi': 'https://fapi.binance.com/futures/data/openInterestHist',
             'funding': 'https://fapi.binance.com/fapi/v1/fundingRate',
@@ -52,14 +60,14 @@ class PublicClient:
             with urllib.request.urlopen(request, timeout=12) as response:
                 obj = json.load(response)
         except urllib.error.HTTPError as exc:
+            retry = exc.headers.get('Retry-After', '').strip() if exc.headers else ''
+            delay = max(1, int(retry)) if retry.isdecimal() else {418: 300, 429: 60, 451: 1800}.get(exc.code, 0)
             if derivatives and (exc.code==451 or (not self.shared_rate_limits and exc.code in (418,429))):
-                retry = exc.headers.get('Retry-After','').strip() if exc.headers else ''
-                delay = max(1,int(retry)) if retry.isdecimal() else {418:300,429:60,451:1800}[exc.code]
                 self.futures_blocked_until = time.monotonic() + delay
                 self.futures_status = exc.code
                 self.futures_reason = f'官方合约接口 HTTP {exc.code}，完整版等待重试'
                 raise PublicDataError(self.futures_reason,exc.code) from exc
-            raise PublicDataError(f'行情接口 HTTP {exc.code}', exc.code) from exc
+            raise PublicDataError(f'行情接口 HTTP {exc.code}', exc.code, delay) from exc
         except (OSError, ValueError) as exc:
             raise PublicDataError(f'行情请求失败：{type(exc).__name__}') from exc
         if isinstance(obj,dict) and route=='pairs':
@@ -73,8 +81,12 @@ class PublicClient:
             if obj.get('code') != '000000' or not isinstance(obj.get('data'), list):
                 raise PublicDataError('Alpha响应不完整，保留原数据等待重试')
             return obj['data']
+        if route == 'spot_pairs':
+            if isinstance(obj, dict) and isinstance(obj.get('symbols'), list):
+                return obj['symbols']
+            raise PublicDataError('Binance Spot 交易对目录格式异常')
         if not isinstance(obj, list):
-            raise PublicDataError('合约公开数据格式异常')
+            raise PublicDataError('公开行情格式异常')
         return obj
 
     def identities(self):
@@ -90,24 +102,29 @@ class PublicClient:
         return result
 
     def alpha(self, symbol: str, alpha: str, store: Store, asof: int, stop: threading.Event, *, pair=None, listed_ms=0):
+        return self.spot_bars('alpha', symbol, pair or alpha + 'USDT', store, asof, stop, listed_ms)
+
+    def spot_bars(self, route, symbol, pair, store, asof, stop, listed_ms=0):
         latest = store.maximum('bars', symbol)
         start = max(asof - 32 * DAY_MS, latest or 0, listed_ms)
         start = start // BAR_MS * BAR_MS
         count = 0
-        # Cold installation needs about7 requests/coin. A resume rechecks the last closed bar.
+        limit = 1500 if route == 'alpha' else 1000
+        source = 'binance-alpha' if route == 'alpha' else 'binance-spot'
+        # A resume rechecks the last closed bar before filling the gap.
         for _ in range(10):
             if start >= asof or stop.is_set():
                 break
-            end = min(start + 1500 * BAR_MS, asof)
-            raw = self.get('alpha', dict(symbol=pair or alpha + 'USDT', interval='5m', startTime=start, endTime=end - 1, limit=1500))
+            end = min(start + limit * BAR_MS, asof)
+            raw = self.get(route, dict(symbol=pair, interval='5m', startTime=start, endTime=end - 1, limit=limit))
             parsed = []
             for item in raw:
                 if not start <= int(item[0]) < end:
-                    raise PublicDataError('Alpha未遵守请求区间，停止本轮更新')
+                    raise PublicDataError('行情接口未遵守请求区间，停止本轮更新')
                 row = parse_bar(item, asof)
                 if row is not None:
                     parsed.append(row)
-            store.save_bars(symbol, parsed)
+            store.save_bars(symbol, parsed, source)
             count += len(parsed)
             start = end
         return count
@@ -238,7 +255,7 @@ def seed_local(store: Store, asof: int, notify=lambda text: None):
 
 
 class Monitor:
-    def __init__(self, store: Store, callback=lambda event: None, client=None):
+    def __init__(self, store: Store, callback=lambda event: None, client=None, *, universe=False):
         self.store, self.callback = store, callback
         self.client = client or PublicClient()
         self.running = False
@@ -252,7 +269,15 @@ class Monitor:
         self.identity_at = 0
         self.settings = {'threshold': .2, 'sound': False}
         self.settings.update(store.get('settings', {}))
-        self.rows = {s: store.get('snapshot:' + s, {'symbol': s, 'status': '尚未扫描'}) for s in TOKENS}
+        self.universe = universe
+        self.catalog = store.get('alpha-market-catalog', {}) if universe else {}
+        self.watch = tuple(store.get('alpha-watchlist', ())) if universe else ()
+        self.watch_all = bool(store.get('alpha-watch-all', True)) if universe else False
+        self.cursor = int(store.get('alpha-scan-cursor', 0)) if universe else 0
+        self.catalog_worker = None
+        self.rows = ({key: row for key, row in store.snapshots().items() if key in self.catalog} if universe else
+                     {symbol: store.get('snapshot:' + symbol, {'symbol': symbol, 'status': '尚未扫描'}) for symbol in TOKENS})
+        self.cooldown_until = 0
 
     def notify(self, kind, **data):
         if not self.closed.is_set():
@@ -261,14 +286,75 @@ class Monitor:
     def prepare(self):
         def job():
             try:
-                seed_local(self.store, now_ms(), lambda text: self.notify('progress', text=text))
-                self.notify('progress', text='历史基准就绪，点击“开始监控”或“立即扫描”')
+                if self.universe:
+                    self._load_catalog()
+                else:
+                    seed_local(self.store, now_ms(), lambda text: self.notify('progress', text=text))
+                    self.notify('progress', text='历史基准就绪，点击“开始监控”或“立即扫描”')
             except Exception:
                 logging.exception('Seed failed')
-                self.notify('progress', text='本地历史读取失败；联网扫描会重新建立基准')
+                self.notify('progress', text='沿用本地缓存目录，可手动刷新' if self.universe else '本地历史读取失败；联网扫描会重新建立基准')
             self.notify('prepared')
         self.worker = threading.Thread(target=job, daemon=True)
         self.worker.start()
+
+    def _load_catalog(self):
+        rows = {}
+        errors = []
+        for source, get_catalog in (
+                ('alpha', lambda: alpha_catalog(self.client.get('tokens'), self.client.get('pairs'))),
+                ('spot', lambda: spot_catalog(self.client.get('spot_pairs')))):
+            try:
+                current = get_catalog()
+                if not current:
+                    raise PublicDataError('Empty trading catalog')
+                rows.update(current)
+            except (PublicDataError, OSError, ValueError, TypeError, KeyError) as exc:
+                rows.update((key, row) for key, row in self.catalog.items() if row.get('source', 'alpha') == source)
+                errors.append(f'{source}: {exc}')
+        if not rows:
+            raise PublicDataError(' · '.join(errors))
+        self.catalog = dict(sorted(rows.items(), key=lambda item: (item[1]['symbol'].casefold(), item[0])))
+        self.identity_at = now_ms()
+        self.store.set('alpha-market-catalog', self.catalog)
+        self.notify('catalog', markets=self.catalog)
+        if errors:
+            self.notify('progress', text='行情请求失败：' + ' · '.join(errors))
+
+    def refresh_catalog(self):
+        if (not self.universe or self.busy or self.closed.is_set() or (self.worker and self.worker.is_alive())
+                or (self.catalog_worker and self.catalog_worker.is_alive())):
+            return
+
+        def job():
+            try:
+                self._load_catalog()
+            except (PublicDataError, OSError, ValueError, TypeError, KeyError) as exc:
+                self.notify('progress', text=f'行情请求失败：{exc}')
+
+        self.catalog_worker = threading.Thread(target=job, daemon=True)
+        self.catalog_worker.start()
+
+    def set_watch(self, keys, watch_all):
+        self.watch = tuple(dict.fromkeys(keys))
+        self.watch_all = bool(watch_all)
+        self.store.set('alpha-watchlist', self.watch)
+        self.store.set('alpha-watch-all', self.watch_all)
+
+    def _universe_targets(self, requested):
+        if not self.identity_at or now_ms() - self.identity_at > DAY_MS:
+            try:
+                self._load_catalog()
+            except (PublicDataError, OSError, ValueError, TypeError, KeyError):
+                if not self.catalog:
+                    raise
+                self.notify('progress', text='沿用本地缓存目录，可手动刷新')
+        if requested is not None or not self.watch_all:
+            return [key for key in (requested if requested is not None else self.watch) if key in self.catalog], None
+        keys = list(self.catalog)
+        start = self.cursor % len(keys)
+        batch = (keys[start:] + keys[:start])[:MARKETS_PER_BATCH]
+        return batch, start
 
     def start(self):
         self.running = True
@@ -280,41 +366,67 @@ class Monitor:
         self.next_scan = 0
         self.cancel.set()
 
-    def scan(self, subscriptions=None, record_alert=None):
-        if self.closed.is_set() or not self.lock.acquire(blocking=False):
+    def scan(self, subscriptions=None, record_alert=None, *, requested=None):
+        if (self.closed.is_set() or now_ms() < self.cooldown_until or (self.catalog_worker and self.catalog_worker.is_alive())
+                or not self.lock.acquire(blocking=False)):
             return False
         self.busy = True
         self.cancel.clear()
-        self.worker = threading.Thread(target=self._scan, args=(subscriptions, record_alert), daemon=True)
+        self.worker = threading.Thread(target=self._scan, args=(subscriptions, record_alert, requested), daemon=True)
         self.worker.start()
         return True
 
-    def _scan(self, subscriptions=None, record_alert=None):
+    def _scan(self, subscriptions=None, record_alert=None, requested=None):
         begun = now_ms()
         settings = dict(self.settings)
         # Give publication20s; unfinished/current bars are filtered once more in parse_bar.
         asof = (begun - 20_000) // BAR_MS * BAR_MS
+        targets = list(TOKENS if subscriptions is None else subscriptions)
+        if self.universe:
+            targets = []
+        next_cursor = None
+        tracked = []
         try:
             self.notify('progress', text='核对代币标识与已收盘行情…')
-            if not self.identity_at or begun - self.identity_at > DAY_MS:
+            if self.universe:
+                targets, next_cursor = self._universe_targets(requested)
+                if not targets:
+                    self.notify('progress', text='请选择监测标的')
+            elif not self.identity_at or begun - self.identity_at > DAY_MS:
                 self.identities = self.client.identities()
                 self.identity_at = begun
                 self.store.set('identities', self.identities)
-            for symbol in TOKENS if subscriptions is None else subscriptions:
+            for symbol in targets:
                 if self.closed.is_set() or self.cancel.is_set():
                     break
-                self.notify('progress', text=f'正在扫描 {symbol} · 已收盘5分钟K线')
+                market = self.catalog.get(symbol) if self.universe else None
+                friendly = market['symbol'] if market else symbol
+                self.notify('progress', text=f'正在扫描 {friendly} · 已收盘5分钟K线')
                 identity = self.identities.get(symbol, {})
                 subscription = None if subscriptions is None else subscriptions[symbol]
-                use_derivatives = subscription is None or 'core' in subscription['alpha']
+                use_derivatives = not self.universe and (subscription is None or 'core' in subscription['alpha'])
                 spot_error = derivative_error = ''
                 try:
-                    if identity.get('error') or not identity.get('alpha'):
+                    if market and market.get('source') == 'spot':
+                        self.client.spot_bars('spot', symbol, market['pair'], self.store, asof, self.cancel)
+                    elif market:
+                        fingerprint = [market['chain_id'], market['contract'].lower()]
+                        saved = self.store.get('alpha-identity:' + symbol)
+                        if saved and saved != fingerprint:
+                            raise PublicDataError('代币标识或状态变化，需要复核')
+                        self.client.alpha(symbol, market['alpha'], self.store, asof, self.cancel,
+                                          pair=market['pair'], listed_ms=market['listed_ms'])
+                        if not saved:
+                            self.store.set('alpha-identity:' + symbol, fingerprint)
+                    elif identity.get('error') or not identity.get('alpha'):
                         raise PublicDataError(identity.get('error', '代币身份未核验'))
-                    self.client.alpha(symbol, identity['alpha'], self.store, asof, self.cancel)
+                    else:
+                        self.client.alpha(symbol, identity['alpha'], self.store, asof, self.cancel)
                 except Exception as exc:
                     spot_error = str(exc)
                     logging.warning('%s spot: %s', symbol, exc)
+                    if self.universe and getattr(exc, 'status', None) in (418, 429):
+                        raise
                 if self.closed.is_set() or self.cancel.is_set():
                     break
                 if use_derivatives:
@@ -331,6 +443,8 @@ class Monitor:
                 state = evaluate_latest(f, observed)
                 # A stale cache must never be promoted to live evidence after a failed request.
                 state.update(symbol=symbol, scanned_ms=observed, spot_error=spot_error, derivative_error=derivative_error)
+                if market:
+                    state.update(display_symbol=friendly, market=market)
                 if spot_error:
                     state.update(ae_signal=False, core_signal=False, ae_ready=False, core_ready=False, status='现货获取失败，停止预警')
                 elif derivative_error:
@@ -351,20 +465,36 @@ class Monitor:
                 self.rows[symbol] = state
                 self.store.set('snapshot:' + symbol, state)
                 self.notify('snapshot', state=state)
+                tracked.append(symbol)
+                if self.universe and self.cancel.wait(.16):
+                    break
             if not self.closed.is_set() and not self.cancel.is_set():
                 self.notify('progress', text='追踪已保存预警的3/7/14天实际结果…')
-                self.store.track(asof)
+                if self.universe:
+                    for symbol in tracked:
+                        self.store.track(asof, symbol=symbol)
+                else:
+                    self.store.track(asof)
                 self.notify('finished', at=begun)
         except Exception as exc:
             logging.exception('Scan failed')
-            for symbol in TOKENS if subscriptions is None else subscriptions:
+            if self.universe and isinstance(exc, PublicDataError) and exc.status in (418, 429):
+                self.cooldown_until = now_ms() + 1000 * exc.retry_after
+            for symbol in targets[len(tracked):]:
                 self.rows[symbol] = {'symbol': symbol, 'status': '本轮连接失败', 'fresh': False,
                                      'ae_ready': False, 'core_ready': False, 'spot_error': str(exc), 'scanned_ms': now_ms()}
                 self.notify('snapshot', state=self.rows[symbol])
             self.notify('progress', text=f'本轮未完成：{exc}；已有记录已保留')
         finally:
+            if next_cursor is not None and tracked and not self.closed.is_set():
+                self.cursor = next_cursor + len(tracked)
+                try:
+                    self.store.set('alpha-scan-cursor', self.cursor)
+                except (OSError, sqlite3.Error):
+                    logging.exception('Could not persist Alpha scan cursor')
             self.busy = False
-            self.next_scan = now_ms() + BAR_MS if self.running else 0
+            interval = MARKET_SCAN_INTERVAL_MS if self.universe and self.watch_all else BAR_MS
+            self.next_scan = max(now_ms() + interval, self.cooldown_until) if self.running else 0
             self.lock.release()
             self.notify('idle')
 

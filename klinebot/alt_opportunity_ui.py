@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import queue
+import re
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -11,8 +12,8 @@ from tkinter import filedialog, ttk
 
 from .alt_monitor_core import BAR_MS, now_ms
 from .alt_opportunity_lp import ReplaySettings, replay
-from .alt_opportunity_scan import (DEX_MARKETS, FUNDING_SYMBOLS, OpportunityStore, QUOTE_GAP,
-                                   SCAN_ERRORS, ScanSettings, Scanner)
+from .alt_opportunity_scan import OpportunityStore, QUOTE_GAP, SCAN_ERRORS, ScanSettings, Scanner
+from .chain_replay import NETWORKS
 
 MUTED = '#a1b2c8'
 GREEN = '#67d9b2'
@@ -31,11 +32,13 @@ def ratio(value):
 
 
 class OpportunityPages:
-    def __init__(self, root, tabs, store, format_time, translate):
+    def __init__(self, root, tabs, store, format_time, translate, market_provider, choose_market):
         self.root = root
         self.tabs = tabs
         self.hk = format_time
         self.t = translate
+        self.market_provider = market_provider
+        self.choose_market = choose_market
         self.store = OpportunityStore(store)
         self.config_store = store
         self.scanner = Scanner(self.store)
@@ -59,10 +62,11 @@ class OpportunityPages:
                         ('标的', '盘口时间', '下次结算 / 周期', '本期预估', '折合 8h', '基差', '模拟净额 USDT'),
                         ('标的', '入场观测', '结算时刻', '模拟买入数量', '入场估算 USDT', '结果 USDT'))
         self._scan_page(tabs, 'dex', '链上价差',
-                        'Ethereum 主网 Uniswap v3 × OKX USDC 现货。两边比较同一代币数量；模型假定已在两边备好库存。',
-                        ('标的', '观测时间', '比较方向', '毛价差 USDC', 'Gas USDC', '净价差 USDC', '正差采样'),
-                        ('标的', '采样时间', '比较方向', '净价差 USDC', '连续采样跨度', '区块'))
+                        '比较同一数量在链上 V3 池和 OKX 现货的双向价差。模拟假定两边已有库存。',
+                        ('标的', '观测时间', '比较方向', '毛价差', 'Gas 成本', '净价差', '正差采样'),
+                        ('标的', '采样时间', '比较方向', '净价差', '连续采样跨度', '区块'))
         self._lp_page(tabs)
+        self.refresh_market()
         for kind in ('funding', 'dex'):
             self._refresh_scan(kind)
         self._refresh_lp()
@@ -113,9 +117,24 @@ class OpportunityPages:
             ttk.Label(row, text=self.t(label)).pack(side='left', padx=(0, 4))
             value = tk.StringVar(value=saved.get(key, str(default)))
             field = (ttk.Combobox(row, values=options, textvariable=value, width=5, state='readonly') if options
-                     else ttk.Entry(row, textvariable=value, width=9))
+                     else ttk.Entry(row, textvariable=value, width=17 if key in ('symbols', 'cex') else 9))
             field.pack(side='left', padx=(0, 10))
             page['fields'][key] = value
+
+    def _market_row(self, kind, frame):
+        row = ttk.Frame(frame)
+        row.pack(fill='x', pady=(0, 7))
+        self.pages[kind]['market'] = label = tk.StringVar()
+        ttk.Label(row, textvariable=label).pack(side='left', padx=(0, 10))
+        ttk.Button(row, text=self.t('选择链上标的'), command=self.choose_market).pack(side='left')
+
+    def refresh_market(self):
+        market = self.market_provider()
+        label = (f'{market.symbol or "ERC-20"}/{market.quote} · {NETWORKS[market.chain].name} · {market.token[:10]}…'
+                 if market else self.t('请选择链上标的'))
+        for kind in ('dex', 'lp'):
+            if kind in self.pages:
+                self.pages[kind]['market'].set(label)
 
     def _controls(self, kind, frame):
         page = self.pages[kind]
@@ -151,7 +170,11 @@ class OpportunityPages:
     def _scan_page(self, tabs, kind, title, description, current_headers, past_headers):
         frame = self._page(tabs, kind, title, description)
         fields = [('amount', '名义金额', 1000, None), ('spot', '现货费率 bp', 10, None)]
-        fields += [('swap', '永续费率 bp', 5, None)] if kind == 'funding' else [('gas', 'Gas 单位预算', 200000, None)]
+        if kind == 'funding':
+            fields.extend([('swap', '永续费率 bp', 5, None), ('symbols', '币种（留空轮扫）', '', None)])
+        else:
+            self._market_row(kind, frame)
+            fields.extend([('gas', 'Gas 单位预算', 200000, None), ('cex', 'OKX 币种（可选）', '', None)])
         self._fields(kind, frame, fields)
         self._controls(kind, frame)
         ttk.Label(frame, text=self.t('最近盘口采样')).pack(anchor='w', pady=(0, 4))
@@ -164,19 +187,21 @@ class OpportunityPages:
     def _lp_page(self, tabs):
         kind = 'lp'
         frame = self._page(tabs, kind, 'LP 对冲回放',
-                           'Uniswap v3 ETH/USDC 0.05% 池 × OKX ETH 永续。历史区块核算区间手续费，约每小时按 ETH 持仓重算空头。')
-        self._fields(kind, frame, [('hours', '约小时', 12, ('6', '12', '24')), ('capital', 'LP 本金 USDC', 1000, None),
+                           '按历史区块核算 V3 区间手续费。开启对冲时，约每小时按代币持仓重算 OKX 永续空头。')
+        self._market_row(kind, frame)
+        self._fields(kind, frame, [('hours', '约小时', 12, ('6', '12', '24')), ('capital', 'LP 本金', 1000, None),
                                    ('width', '单侧区间 %', 5, None), ('hedge', '对冲比例 %', 100, None),
-                                   ('cost', '对冲成本 bp', 7, None), ('chain', '链上总成本 USDC', 5, None)])
+                                   ('cost', '对冲成本 bp', 7, None), ('chain', '链上总成本', 5, None),
+                                   ('cex', 'OKX 币种（可选）', '', None)])
         self._controls(kind, frame)
-        self._tree(kind, frame, 'past', ('历史起点', '历史终点', '价格区间', '手续费 USDC', 'LP 净额', '对冲后净额'),
-                   (150, 150, 175, 135, 135, 135), 3)
+        self._tree(kind, frame, 'past', ('标的', '历史起点', '历史终点', '价格区间', '手续费', 'LP 净额', '对冲后净额'),
+                   (130, 120, 120, 150, 95, 90, 100), 2)
         ttk.Label(frame, textvariable=self.pages[kind]['details'], style='Muted.TLabel', wraplength=965).pack(fill='x', pady=(2, 4))
-        chart = tk.Canvas(frame, background=PANEL, highlightthickness=0, height=150)
+        chart = tk.Canvas(frame, background=PANEL, highlightthickness=0, height=96)
         chart.pack(fill='both', expand=True, pady=(3, 7))
         chart.bind('<Configure>', lambda event: self._paint_lp())
         self.pages[kind]['chart'] = chart
-        self._tree(kind, frame, 'path', ('区块时间', 'ETH/USDC', '区间', 'LP ETH', '空头 ETH', '累计费 USDC', '对冲后净额'),
+        self._tree(kind, frame, 'path', ('区块时间', '价格', '区间', 'LP 代币数量', '空头数量', '累计手续费', '对冲后净额'),
                    (154, 120, 85, 122, 122, 132, 135), 4)
 
     def start(self, kind):
@@ -187,6 +212,13 @@ class OpportunityPages:
         page = self.pages[kind]
         raw = {key: field.get() for key, field in page['fields'].items()}
         try:
+            market = self.market_provider() if kind != 'funding' else None
+            cex = raw.get('cex', '').strip().upper()
+            symbols = list(dict.fromkeys(re.findall(r'[^\s,，]+', raw.get('symbols', '').upper())))
+            if kind != 'funding' and market is None:
+                raise ValueError('请选择链上标的')
+            if any(not re.fullmatch(r'[A-Z0-9]{1,24}', symbol) for symbol in [*symbols, *([cex] if cex else [])]):
+                raise ValueError('请输入 OKX 币种代码，多个用逗号分隔')
             if kind == 'lp':
                 settings = ReplaySettings.from_values(*(raw[key] for key in ('hours', 'capital', 'width', 'hedge', 'cost', 'chain')))
             else:
@@ -206,12 +238,18 @@ class OpportunityPages:
             outcome = ('回放完成' if kind == 'lp' else '采样已保存',)
             try:
                 if kind == 'lp':
-                    result = replay(settings, stop.is_set, lambda *args: self.events.put((kind, 'status', args)))
+                    result = replay(settings, stop.is_set, lambda *args: self.events.put((kind, 'status', args)),
+                                    selected=market, cex_symbol=cex)
                     if not stop.is_set():
                         self.store.save_replay(result)
                 else:
-                    method = self.scanner.funding if kind == 'funding' else self.scanner.dex
-                    method(settings, stop.is_set, lambda row: self.events.put((kind, 'sample', row)))
+                    def update(row):
+                        self.events.put((kind, 'sample', row))
+
+                    if kind == 'funding':
+                        self.scanner.funding(settings, stop.is_set, update, symbols)
+                    else:
+                        self.scanner.dex_market(settings, market, cex, stop.is_set, update)
             except SCAN_ERRORS as exc:
                 outcome = ('数据不足：{0}', str(exc))
             except Exception:
@@ -279,13 +317,15 @@ class OpportunityPages:
 
     def _refresh_scan(self, kind):
         records = self.store.samples(kind)
-        symbols = FUNDING_SYMBOLS if kind == 'funding' else DEX_MARKETS
-        recent = {symbol: next((r for r in records if r['symbol'] == symbol), None) for symbol in symbols}
+        recent = {}
+        for row in records:
+            recent.setdefault(row.get('market_key', row['symbol']), row)
         current, past, values = [], [], {}
-        for symbol, row in recent.items():
-            if row is None or row.get('error'):
-                values[symbol] = row
-                current.append((symbol, (symbol, self.hk((row or {}).get('observed')), self.t('数据不足' if row else '等待采样'))))
+        for key, row in recent.items():
+            symbol = row['symbol'] if kind == 'funding' else self.pair_label(row)
+            if row.get('error'):
+                values[key] = row
+                current.append((key, (symbol, self.hk(row['observed']), self.t('数据不足'))))
                 continue
             observed = row['observed']
             time = self.hk(observed) + (' · ' + self.t('历史') if now_ms() - observed > QUOTE_GAP else '')
@@ -296,7 +336,7 @@ class OpportunityPages:
                                          ratio(info['rate']), ratio(info['rate_8h']), ratio(row['basis']), cash(row['net']))))
             else:
                 for side, item in row['opportunities'].items():
-                    ident = f'{symbol}-{side}'
+                    ident = f'{key}-{side}'
                     values[ident] = row
                     current.append((ident, (symbol, time, self.t(DIRECTIONS[side]), cash(item['gross']),
                                             f'{item["gas_cost"]:.3f}', cash(item['net']), self._span(row, item))))
@@ -316,7 +356,7 @@ class OpportunityPages:
                 for side, item in row.get('opportunities', {}).items():
                     ident = f'{row["sample_id"]}-{side}'
                     history[ident] = row
-                    past.append((ident, (row['symbol'], self.hk(row['observed']), self.t(DIRECTIONS[side]), cash(item['net']),
+                    past.append((ident, (self.pair_label(row), self.hk(row['observed']), self.t(DIRECTIONS[side]), cash(item['net']),
                                          self._span(row, item), row['block']['number'])))
         self.records[kind] = history
         self._paint_rows(kind, 'current', current)
@@ -326,10 +366,16 @@ class OpportunityPages:
         if selected and page[selected[0]].selection():
             self.select(kind, selected[0])
         else:
-            errors = [f'{s} {r["error"]}' for s, r in recent.items() if r and r.get('error')]
             default = ('仅正净额入场样本会跟踪一次结算；模拟退出取结算后 1–20 分钟内首份有效盘口。'
                        if kind == 'funding' else '报价含池手续费和价格冲击；另外扣交易所费与估计 Gas。两次采样之间的走势未知。')
-            page['details'].set(' · '.join(errors) if errors else self.t(default))
+            page['details'].set(self.t(default))
+
+    @staticmethod
+    def pair_label(row):
+        market = row.get('market', {})
+        chain = market.get('chain', 1)
+        suffix = ' · BNB' if chain == 56 else ' · ETH'
+        return f'{market.get("symbol") or row["symbol"]}/{row.get("quote", "USDC")}{suffix}'
 
     def _span(self, row, item):
         return (self.t('{0:.0f} 分 / {1} 次', (row['observed'] - item['since']) / 60_000, item['samples'])
@@ -342,8 +388,10 @@ class OpportunityPages:
             first, last = run['points'][0], run['points'][-1]
             ident = str(index)
             history[ident] = run
-            rows.append((ident, (self.hk(first['ts']), self.hk(last['ts']),
-                                 f'{run["price_low"]:.2f} – {run["price_high"]:.2f}',
+            market = run.get('market', {'symbol': 'ETH', 'quote': 'USDC'})
+            pair = f'{market["symbol"]}/{market["quote"]}'
+            rows.append((ident, (pair, self.hk(first['ts']), self.hk(last['ts']),
+                                 f'{run["price_low"]:.7g} – {run["price_high"]:.7g}',
                                  f'{last["fees"]:.3f}', cash(last['lp_net']), cash(last['net']))))
         self.records['lp'] = history
         self._paint_rows('lp', 'past', rows)
@@ -379,17 +427,19 @@ class OpportunityPages:
                 text += f' · {result["reason"]}'
             page['details'].set(text)
         elif kind == 'dex':
-            page['details'].set(self.t('{0} · {1:.8g} 枚 · 区块 {2} · 池 {3}\n链上买 / 卖 {4:.3f} / {5:.3f} · OKX 买 / 卖 {6:.3f} / {7:.3f} USDC',
-                                       row['symbol'], row['quantity'], row['block']['number'], row['pool'],
-                                       row['dex_buy'], row['dex_sell'], row['cex_buy'], row['cex_sell']))
+            side = ident.rsplit('-', 1)[-1]
+            pool = row.get('sell_pool', row['pool']) if side == 'cex_buy' else row['pool']
+            page['details'].set(self.t('{0} · {1:.8g} 枚 · 区块 {2} · 池 {3}\n链上买 / 卖 {4:.3f} / {5:.3f} · OKX 买 / 卖 {6:.3f} / {7:.3f} {8}',
+                                       self.pair_label(row), row['quantity'], row['block']['number'], pool,
+                                       row['dex_buy'], row['dex_sell'], row['cex_buy'], row['cex_sell'], row.get('quote', 'USDC')))
         else:
             self.chart_replay = row
             end = row['points'][-1]
-            page['details'].set(self.t('LP 手续费 {0:.3f} · 永续价差 {1} · 已结算资金费 {2} · 对冲成本 {3:.3f} · 链上成本 {4:.3f} USDC 等值',
+            page['details'].set(self.t('LP 手续费 {0:.3f} · 永续价差 {1} · 已结算资金费 {2} · 对冲成本 {3:.3f} · 链上成本 {4:.3f} {5}',
                                        end['fees'], cash(end['hedge_pnl']), cash(end['funding']),
-                                       end['hedge_cost'], row['settings']['chain_cost']))
-            rows = [(str(i), (self.hk(p['ts']), f'{p["price"]:.2f}', self.t('区间内' if p['in_range'] else '区间外'),
-                              f'{p["eth"]:.6f}', f'{p["hedge"]:.6f}', f'{p["fees"]:.3f}', cash(p['net'])))
+                                       end['hedge_cost'], row['settings']['chain_cost'], row.get('market', {}).get('quote', 'USDC')))
+            rows = [(str(i), (self.hk(p['ts']), f'{p["price"]:.8g}', self.t('区间内' if p['in_range'] else '区间外'),
+                              f'{p.get("base", p.get("eth")):.8g}', f'{p["hedge"]:.8g}', f'{p["fees"]:.3f}', cash(p['net'])))
                     for i, p in enumerate(row['points'])]
             self._paint_rows('lp', 'path', rows)
             self._paint_lp()

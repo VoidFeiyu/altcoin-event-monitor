@@ -1,17 +1,18 @@
-"""Persistent, read-only scans for funding and Ethereum/CEX spreads."""
+"""Persistent, read-only scans for funding and on-chain/CEX spreads."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
 import json
 import logging
+import re
 
 from .alt_monitor_core import BAR_MS, now_ms, payload
-from .alt_opportunity_market import (DataUnavailable, Ethereum, HOUR, LINK, MINUTE,
+from .alt_opportunity_market import (DataUnavailable, HOUR, MINUTE,
                                     Okx, WETH, check_age, finite, shared_quantity)
+from .chain_replay import ChainReader, Market
 
-FUNDING_SYMBOLS = ('ETH', 'SOL', 'LINK')
-DEX_MARKETS = {'ETH': (WETH, 500), 'LINK': (LINK, 3000)}
+NATIVE_WRAPPED = {1: WETH, 56: '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c'}
 EXIT_WINDOW = 20 * MINUTE
 QUOTE_GAP = 3 * BAR_MS // 2
 SCAN_ERRORS = (DataUnavailable, ValueError, TypeError, KeyError, IndexError, ArithmeticError)
@@ -97,6 +98,12 @@ class OpportunityStore:
         return [{**dict(row), **{key: json.loads(row[key]) if row[key] else None
                                 for key in ('entry', 'exit', 'result')}} for row in rows]
 
+    def due_symbols(self):
+        with self.store.connect() as db:
+            rows = db.execute('SELECT DISTINCT symbol FROM funding_cases WHERE result IS NULL AND settlement<=?',
+                              (now_ms(),)).fetchall()
+        return [row['symbol'] for row in rows]
+
     def freeze_exit(self, ident, row):
         with self.store.connect() as db:
             db.execute('UPDATE funding_cases SET exit=? WHERE id=? AND exit IS NULL', (payload(row), ident))
@@ -125,6 +132,15 @@ def funding_market(okx, symbol):
     if abs(spot.timestamp - swap.timestamp) > 12_000:
         raise DataUnavailable('现货与永续盘口时间差超过 12 秒')
     return spot_spec, swap_spec, multiplier, spot, swap
+
+
+def funding_symbols(okx):
+    spot = {row['baseCcy'] for row in okx.data('public/instruments', instType='SPOT')
+            if row.get('state') == 'live' and row.get('quoteCcy') == 'USDT' and row.get('baseCcy')}
+    swap = {row['ctValCcy'] for row in okx.data('public/instruments', instType='SWAP')
+            if row.get('state') == 'live' and row.get('ctType') == 'linear' and row.get('settleCcy') == 'USDT'
+            and row.get('ctValCcy') and row.get('instId') == f'{row["ctValCcy"]}-USDT-SWAP'}
+    return sorted(spot & swap)
 
 
 def funding_candidate(symbol, market, info, settings):
@@ -162,10 +178,12 @@ def settled_result(entry, exit_row, rate, mark):
 
 
 class Scanner:
-    def __init__(self, store, okx=None, chain=None):
+    def __init__(self, store, okx=None):
         self.store = store
         self.okx = okx or Okx()
-        self.chain = chain or Ethereum()
+        self.funding_catalog = []
+        self.funding_catalog_at = 0
+        self.funding_cursor = 0
 
     def pending(self, symbol, market):
         settled = None
@@ -205,74 +223,113 @@ class Scanner:
                 if exit_row and now - settlement > 24 * HOUR:
                     self.store.finish(case['id'], {'status': 'gap', 'reason': f'结算资料缺口：{exc}'})
 
-    def funding(self, settings, stopped, update):
-        for symbol in FUNDING_SYMBOLS:
+    def funding(self, settings, stopped, update, symbols=None):
+        if not symbols:
+            if not self.funding_catalog or now_ms() - self.funding_catalog_at > HOUR:
+                self.funding_catalog = funding_symbols(self.okx)
+                self.funding_catalog_at = now_ms()
+            if not self.funding_catalog:
+                raise DataUnavailable('No eligible OKX USDT spot and perpetual pair')
+            start = self.funding_cursor % len(self.funding_catalog)
+            symbols = (self.funding_catalog[start:] + self.funding_catalog[:start])[:16]
+        due = self.store.due_symbols()
+        for symbol in dict.fromkeys([*due, *symbols]):
             if stopped():
                 return
             market = None
             try:
                 market = funding_market(self.okx, symbol)
-                info = self.okx.funding(f'{symbol}-USDT-SWAP')
-                row = funding_candidate(symbol, market, info, settings)
+                if symbol in symbols:
+                    info = self.okx.funding(f'{symbol}-USDT-SWAP')
+                    row = funding_candidate(symbol, market, info, settings)
             except SCAN_ERRORS as exc:
                 row = {'symbol': symbol, 'observed': now_ms(), 'error': str(exc)}
             if stopped():
                 return
             self.pending(symbol, market)
+            if symbol not in symbols:
+                continue
             self.store.sample('funding', symbol, row)
             if 'net' in row:
                 self.store.open_case(row)
             update(row)
+        self.funding_cursor += len(symbols)
 
-    def dex_candidate(self, symbol, settings, block, gas_price, eth_price):
-        token, tier = DEX_MARKETS[symbol]
-        ident = f'{symbol}-USDC'
-        spec = self.okx.instrument(ident, 'SPOT')
-        if spec.get('baseCcy') != symbol or spec.get('quoteCcy') != 'USDC':
-            raise DataUnavailable('OKX 现货计价资产不匹配')
-        pool = self.chain.pool(token, tier, block['number'])
-        book = self.okx.book(ident)
-        quantity = shared_quantity(settings.notional, book.mid, spec['lotSz'], '0.000000000000000001')
-        if quantity < Decimal(spec['minSz']):
-            raise DataUnavailable('数量低于 OKX 现货最小订单量')
-        qty = int(quantity * 10**18)
-        base = qty / 10**18
-        cex_buy, cex_sell = book.value(base, True), book.value(base, False)
-        dex_buy, buy_gas = self.chain.quote(token, tier, qty, True, block['number'])
-        dex_sell, sell_gas = self.chain.quote(token, tier, qty, False, block['number'])
+    def dex_market(self, settings, market, cex_symbol, stopped, update):
+        reader = ChainReader(market.chain)
+        symbol = market.symbol or market.token[:10]
         observed = now_ms()
-        check_age(book.timestamp, observed, 25_000, 'OKX USDC 盘口')
-        check_age(block['ts'], observed, 60_000, 'Ethereum 报价区块')
-        if abs(book.timestamp - block['ts']) > 45_000:
-            raise DataUnavailable('链上区块与交易所盘口时间差超过 45 秒')
-        opportunities = {}
-        for side, sell, buy, units, cex in (
-                ('dex_buy', cex_sell, dex_buy, buy_gas, cex_sell),
-                ('cex_buy', dex_sell, cex_buy, sell_gas, cex_buy)):
-            fee = cex * settings.spot_bp / 10_000
-            gas = max(settings.gas_units, units + 60_000) * gas_price / 10**18 * eth_price
-            opportunities[side] = {'gross': sell - buy, 'cex_fee': fee, 'gas_cost': gas,
-                                   'net': sell - buy - fee - gas}
-        return {'symbol': symbol, 'observed': observed, 'block': block, 'spot_ts': book.timestamp,
-                'pool': pool, 'gas_price': gas_price, 'eth_usdc': eth_price, 'target': settings.notional,
-                'quantity': base, 'cex_buy': cex_buy, 'cex_sell': cex_sell, 'dex_buy': dex_buy,
-                'dex_sell': dex_sell, 'dex_buy_gas': buy_gas, 'dex_sell_gas': sell_gas,
-                'spot_book': {'bids': book.bids, 'asks': book.asks}, 'opportunities': opportunities,
-                'setup': [settings.notional, settings.spot_bp, settings.gas_units, pool]}
+        try:
+            base_symbol = reader.symbol(market.token, reader.block()['number'])
+            symbol = cex_symbol.strip().upper() or base_symbol.upper()
+            if market.token == NATIVE_WRAPPED[market.chain].lower() and not cex_symbol:
+                symbol = 'ETH' if market.chain == 1 else 'BNB'
+            if not re.fullmatch(r'[A-Z0-9]{1,24}', symbol):
+                raise DataUnavailable('Enter the matching OKX asset code')
+            ident = f'{symbol}-{market.quote}'
+            spec = self.okx.instrument(ident, 'SPOT')
+            if spec.get('baseCcy') != symbol or spec.get('quoteCcy') != market.quote:
+                raise DataUnavailable('OKX instrument currency mismatch')
+            if base_symbol.upper() not in (symbol, 'W' + symbol):
+                raise DataUnavailable(f'Contract symbol {base_symbol} differs from OKX {symbol}')
 
-    def dex(self, settings, stopped, update):
-        for symbol in DEX_MARKETS:
-            if stopped():
-                return
-            try:
-                block = self.chain.block()
-                gas_price = int(self.chain.rpc('eth_gasPrice'), 16)
-                if gas_price <= 0:
-                    raise DataUnavailable('Ethereum Gas 报价无效')
-                eth_price = self.chain.eth_usdc(block['number'])
-                row = self.dex_candidate(symbol, settings, block, gas_price, eth_price)
-            except SCAN_ERRORS as exc:
-                row = {'symbol': symbol, 'observed': now_ms(), 'error': str(exc)}
-            if stopped():
-                return
-            update(self.store.sample('dex', symbol, row))
+            def check():
+                if stopped():
+                    raise DataUnavailable('Sampling stopped')
+
+            block = reader.block('latest')
+            pools = reader.discover(market, block['number'], check)
+            if not pools:
+                raise DataUnavailable('No supported direct V3 pool')
+            native = Market(market.chain, NATIVE_WRAPPED[market.chain], 'Gas', market.quote)
+            gas_pool = pools[0] if native.token == market.token else next(iter(reader.discover(native, block['number'], check)), None)
+            if gas_pool is None:
+                raise DataUnavailable('Gas conversion pool is unavailable')
+            gas_quote_unit = 10**reader.decimals(market.quote_address, block['number'])
+            native_first = int(native.token, 16) < int(native.quote_address, 16)
+            gas_conversion = reader.state(gas_pool, block['number'], native_first, 10**18, gas_quote_unit)['price']
+            gas_price = int(reader.rpc('eth_gasPrice'), 16)
+            # Refresh the block after discovery to keep the two venues' quotes reasonably aligned.
+            block = reader.block('latest')
+            book = self.okx.book(ident)
+            base_unit = 10**reader.decimals(market.token, block['number'])
+            quantity = shared_quantity(settings.notional, book.mid, spec['lotSz'], str(Decimal(1) / base_unit))
+            if quantity < Decimal(spec['minSz']):
+                raise DataUnavailable('Quantity is below the OKX minimum')
+            qty = float(quantity)
+            quotes = []
+            for pool in pools:
+                check()
+                try:
+                    result = reader.quote(market, pool, block['number'], int(quantity * base_unit), gas_quote_unit)
+                    quotes.append((pool, result))
+                except DataUnavailable:
+                    continue
+            if not quotes:
+                raise DataUnavailable('No complete two-way quote for the requested quantity')
+            buy, quotes_buy = min(quotes, key=lambda item: item[1]['buy_quote'])
+            sell, quotes_sell = max(quotes, key=lambda item: item[1]['sell_quote'])
+            observed = now_ms()
+            check_age(book.timestamp, observed, 25_000, 'OKX book')
+            check_age(block['ts'], observed, 60_000, 'DEX quote block')
+            if abs(book.timestamp - block['ts']) > 45_000:
+                raise DataUnavailable('OKX book and DEX block differ by more than 45 seconds')
+            cex_buy, cex_sell = book.value(qty, True), book.value(qty, False)
+            dex_buy, dex_sell = quotes_buy['buy_quote'], quotes_sell['sell_quote']
+            gas_cost = settings.gas_units * gas_price / 10**18 * gas_conversion
+            options = {}
+            for side, gross, cex in (('dex_buy', cex_sell - dex_buy, cex_sell), ('cex_buy', dex_sell - cex_buy, cex_buy)):
+                fee = cex * settings.spot_bp / 10_000
+                options[side] = {'gross': gross, 'cex_fee': fee, 'gas_cost': gas_cost, 'net': gross - fee - gas_cost}
+            row = {'symbol': symbol, 'market_key': market.key, 'quote': market.quote, 'observed': observed,
+                   'block': block, 'spot_ts': book.timestamp, 'pool': buy.address, 'sell_pool': sell.address,
+                   'market': {**vars(market), 'symbol': base_symbol}, 'target': settings.notional, 'quantity': qty,
+                   'cex_buy': cex_buy, 'cex_sell': cex_sell, 'dex_buy': dex_buy, 'dex_sell': dex_sell,
+                   'gas_price': gas_price, 'gas_conversion': gas_conversion, 'spot_book': {'bids': book.bids, 'asks': book.asks},
+                   'opportunities': options, 'setup': [market.key, symbol, settings.notional, settings.spot_bp,
+                                                       settings.gas_units, buy.address, sell.address]}
+        except SCAN_ERRORS as exc:
+            row = {'symbol': symbol, 'market_key': market.key, 'quote': market.quote, 'market': vars(market),
+                   'observed': observed, 'error': str(exc)}
+        if not stopped():
+            update(self.store.sample('dex', market.key, row))

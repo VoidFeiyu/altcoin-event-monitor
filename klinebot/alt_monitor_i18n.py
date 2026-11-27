@@ -17,77 +17,55 @@ _TRANSLATED_LANGUAGES = ('en', 'ja', 'ko', 'es')
 
 GUIDE_TEXT = (
     "价量版 A&E：现货最近1小时成交额至少为此前30天中位数的2倍，且达到P95；同时1小时绝对涨跌达到此前30天P95。\n\n"
-    "完整版 A / OB / C / E：加入4小时OI数量变化至少10%且P95、按实际结算间隔归一化的已结算费率极端状态；至少满足两项且包含A或OB。OI和费率按5分钟延迟使用。资料缺失时只显示“完整版不足”，不会把价量版冒充完整版。\n\n"
     "结果：相对预警价格达到冻结门槛，同方向连续3根实际成交5分钟K线收盘确认。3 / 7 / 14天分别追踪，已发生可以确认；窗口没走完不会判未达标。数据缺口会明确标出。\n\n"
     "市场参考价：7天、30天成交金额÷成交币数量；前7天高低点；近似30天POC与70%成交密集带。成交分布将每根5分钟的全部成交量放到该根实际均价所在的0.5%对数价桶，仅为近似，区间不是成本置信区间。它们不是庄家或当前持有者的成本。\n\n"
-    "价格来自Alpha USDT现货。零成交旧价不触发预警；未收盘K线不参与计算。每条预警保存行情时刻和实际扫描时刻。程序仅判断最近收盘，不把停机期间的历史信号当作实时提醒。\n\n"
+    "价格来自币安现货和 Alpha 的公开数据。只使用有成交的已收盘 K 线。预警保存行情和扫描时间。\n\n"
     "程序不会开机自动启动。关闭窗口停止监控；最小化后仍可运行。需要电脑保持运行、网络正常。历史补齐以最近32天为主，长期停机的旧缺口不保证全部补回。\n\n"
-    "部分官方合约接口可能返回451；软件显示限制，不更换地区出口或代理绕过。缺少OI时价量版可独立运行。没有交易、账户、私钥或对外消息接口。\n\n"
     "本机数据目录：{0}\n规则版本：alpha-events-v1  ·  预警是观察线索，不确定涨跌方向。"
 )
 
 _GUIDES = (
     (
         "Spot model A&E. The latest hour’s quote volume must reach twice the median and at least the 95th percentile of the previous 30 days. Absolute one-hour price change must also reach its 95th percentile.\n\n"
-        "Full model A / OB / C / E. OB requires a four-hour increase in open interest quantity of at least 10% and its 95th percentile. C checks extreme settled funding normalized by the settlement interval. At least two signals must fire, including A or OB. Open interest and funding are delayed five minutes. Missing derivatives data disables the full model.\n\n"
         "Outcomes. Three consecutive traded five-minute candles must close beyond the saved alert threshold in the same direction. Follow-up windows are 3, 7 and 14 days. A hit can be confirmed early. Open windows and data gaps are shown separately.\n\n"
         "Market references. The app shows 7- and 30-day volume-weighted averages, the prior seven-day high and low, and an approximate 30-day POC and 70% volume area. Each candle's volume is assigned to a 0.5% logarithmic bucket at its traded average. These figures describe the market’s historical trades.\n\n"
-        "Data. Prices come from Alpha USDT spot markets. Only closed candles with actual trades can trigger alerts. Each alert records candle and scan times. Backfilled alerts are excluded from live records.\n\n"
+        "Prices come from public Binance Spot and Alpha feeds. Alerts use closed candles with actual trades and record candle and scan times.\n\n"
         "Operation. Start manually and leave the PC online. Minimizing keeps the monitor running. Closing stops it. Backfill covers roughly 32 days. Older gaps may remain.\n\n"
-        "Derivatives. Official endpoints can return HTTP 451. The spot model runs independently when open interest is unavailable. The app uses public, read-only endpoints.\n\n"
         "Local data: {0}\nRule version: alpha-events-v1 · Alerts flag unusual activity. Direction is observed afterward."
     ),
     (
         "現物モデル A&E。直近1時間の売買代金が過去30日間の中央値の2倍以上かつ95パーセンタイル以上で、1時間の絶対価格変化も95パーセンタイル以上の場合に通知します。\n\n"
-        "完全モデル A / OB / C / E。OBは4時間の建玉数量の増加が10%以上かつ95パーセンタイル以上、Cは実際の決済間隔で正規化した確定済み資金調達率の極端値です。AまたはOBを含む2項目以上が必要です。建玉と資金調達率には5分の遅延を適用します。データ不足時は完全モデルを停止します。\n\n"
         "結果。実際に取引のあった5分足が同方向で3本連続して通知時のしきい値を超えて確定すると達成です。3日、7日、14日の窓で追跡し、期間途中でも達成を確認できます。進行中の窓と欠損データは個別に表示します。\n\n"
         "市場参考値。7日・30日の出来高加重平均価格、直前7日の高値・安値、概算の30日POCと70%出来高帯を表示します。各足の出来高を取引平均価格の0.5%対数価格帯に割り当てた概算です。\n\n"
-        "データ。Alpha USDTの現物価格を使います。実際に取引のあった確定足のみ通知を発生させます。足とスキャンの時刻を保存し、停止中の履歴はリアルタイム通知に追加しません。\n\n"
+        "Binance現物とAlphaの公開データを使います。実際に取引のあった確定足を使い、足とスキャンの時刻を保存します。\n\n"
         "操作。手動で開始し、PCをオンラインにしてください。最小化しても監視を継続し、閉じると終了します。補完は直近32日間が中心で、古い欠損は残る場合があります。\n\n"
-        "デリバティブ。公式APIがHTTP 451を返す場合があります。建玉データが使えなくても現物モデルは独立して動作します。公開の読み取り専用APIを使用します。\n\n"
         "ローカルデータ: {0}\nルール版: alpha-events-v1 · 異常を知らせ、方向は事後に確認します。"
     ),
     (
         "현물 모델 A&E. 최근 1시간 거래대금이 이전 30일 중앙값의 2배 이상이며 95백분위수 이상이어야 합니다. 1시간 절대 가격 변동률도 자체 95백분위수에 도달해야 합니다.\n\n"
-        "전체 모델 A / OB / C / E. OB는 4시간 미결제약정 수량 증가율이 10% 이상이면서 95백분위수 이상인 경우입니다. C는 정산 주기로 정규화한 실제 펀딩비의 극단값입니다. A 또는 OB를 포함해 두 항목 이상이 필요합니다. 미결제약정과 펀딩비는 5분 지연을 적용합니다. 파생상품 데이터가 부족하면 전체 모델은 비활성화됩니다.\n\n"
         "결과. 실제 거래가 있었던 5분 봉 3개가 같은 방향으로 저장된 임계값을 넘어 마감하면 달성입니다. 3일, 7일, 14일을 따로 추적하고 기간 종료 전에도 달성을 확인할 수 있습니다. 추적 중과 데이터 공백은 따로 표시됩니다.\n\n"
         "시장 참고가. 7일·30일 거래량 가중 평균가, 직전 7일 고가·저가, 추정 30일 POC 및 70% 거래량 구간을 표시합니다. 각 봉의 거래량 전체를 실제 평균 거래가가 속하는 0.5% 로그 가격 구간에 배정한 추정치입니다.\n\n"
-        "데이터. 가격은 Alpha USDT 현물에서 가져옵니다. 실거래가 있는 마감 봉만 알림을 생성할 수 있습니다. 봉 시각과 스캔 시각을 저장합니다. 중단 기간에 보충한 과거 알림은 실시간 기록에서 제외됩니다.\n\n"
+        "Binance 현물과 Alpha 공개 시세를 사용합니다. 실거래가 있는 마감 봉을 사용하며 봉과 스캔 시각을 저장합니다.\n\n"
         "실행. 수동으로 시작하고 PC를 온라인 상태로 유지하세요. 최소화하면 계속 실행되고 닫으면 종료됩니다. 최근 32일 데이터의 보충을 시도하며 오래된 공백은 남을 수 있습니다.\n\n"
-        "파생상품. 공식 API가 HTTP 451을 반환할 수 있습니다. 미결제약정 데이터가 없어도 현물 모델은 독립적으로 작동합니다. 공개 읽기 전용 API를 사용합니다.\n\n"
         "로컬 데이터: {0}\n규칙 버전: alpha-events-v1 · 알림은 이상 움직임을 표시하며 방향은 사후 관찰합니다."
     ),
     (
         "Modelo al contado A&E. El volumen cotizado de la última hora debe alcanzar el doble de la mediana y el percentil 95 de los 30 días anteriores. La variación absoluta de una hora también debe alcanzar su percentil 95.\n\n"
-        "Modelo completo A / OB / C / E. OB requiere que la cantidad de interés abierto aumente un 10% o más en cuatro horas y alcance el percentil 95. C detecta financiación liquidada extrema y normalizada por su intervalo. Se requieren dos señales, incluida A u OB. El interés abierto y la financiación se aplican con cinco minutos de retraso. Si faltan datos, el modelo completo se desactiva.\n\n"
         "Resultados. Tres velas consecutivas de cinco minutos con operaciones reales deben cerrar más allá del umbral guardado, en la misma dirección. Se siguen ventanas de 3, 7 y 14 días. Un acierto puede confirmarse antes del cierre. Las ventanas abiertas y los huecos de datos se muestran por separado.\n\n"
         "Referencias. Se muestran precios medios ponderados de 7 y 30 días, máximos y mínimos de los 7 días previos, y POC y área de valor del 70% aproximados de 30 días. El volumen de cada vela se asigna al tramo logarítmico del 0,5% de su precio medio negociado.\n\n"
-        "Datos. Los precios provienen de Alpha al contado frente a USDT. Solo las velas cerradas con operaciones pueden generar alertas. Se guardan las horas de la vela y del escaneo. Los datos recuperados durante una interrupción no generan alertas retroactivas.\n\n"
+        "Los precios vienen de Binance Spot y Alpha. Las alertas usan velas cerradas con operaciones y guardan las horas de la vela y del escaneo.\n\n"
         "Uso. Inicia el monitor manualmente y mantén el equipo conectado. Al minimizar, sigue funcionando. Al cerrar, se detiene. Se intenta recuperar unos 32 días de datos. Pueden quedar huecos anteriores.\n\n"
-        "Derivados. Los nodos oficiales pueden devolver HTTP 451. El modelo al contado funciona sin datos de interés abierto. El monitor usa interfaces públicas de solo lectura.\n\n"
         "Datos locales: {0}\nVersión: alpha-events-v1 · Las alertas indican actividad inusual. La dirección se observa después."
     ),
 )
 
 # Translations are listed in the order above.
 _MESSAGES = {
-    "四币异动观察站 · 测试版": (
-        "Four-token event monitor · Beta",
-        "4銘柄の急変動モニター · ベータ",
-        "4종목 이상 움직임 모니터 · 베타",
-        "Monitor de cuatro altcoins · Beta",
-    ),
     "异动观察站": (
         "Event monitor",
         "急変動モニター",
         "이상 움직임 모니터",
         "Monitor de anomalías",
-    ),
-    "  RAVE / BSB / EVAA / LAB  ·  本地测试版": (
-        "  RAVE / BSB / EVAA / LAB  ·  Local beta",
-        "  RAVE / BSB / EVAA / LAB  ·  ローカル版",
-        "  RAVE / BSB / EVAA / LAB  ·  로컬 베타",
-        "  RAVE / BSB / EVAA / LAB  ·  Beta local",
     ),
     "已暂停 · 关闭窗口即停止": (
         "Paused · Close window to stop",
@@ -509,12 +487,6 @@ _MESSAGES = {
         "CSVファイル",
         "CSV 파일",
         "Archivo CSV",
-    ),
-    "四币异动预警.csv": (
-        "altcoin-alerts.csv",
-        "急変動通知.csv",
-        "이상-움직임-알림.csv",
-        "alertas-altcoins.csv",
     ),
     "已导出：": (
         "Exported: ",
