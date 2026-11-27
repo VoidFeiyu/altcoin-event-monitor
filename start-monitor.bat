@@ -6,7 +6,7 @@ if not exist ".venv\Scripts\python.exe" (
     pause
     exit /b 1
 )
-".venv\Scripts\python.exe" -m klinebot.alt_monitor_app
+".venv\Scripts\python.exe" -m klinebot.alpha_web --open
 if errorlevel 1 (
     pause
     exit /b 1

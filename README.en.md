@@ -4,6 +4,12 @@
 
 A read-only Windows app for market alerts, funding and basis, on-chain spreads, and LP hedge replay. Search active assets on Binance Spot and Alpha, scan a watchlist or the full catalog in rotation, and track alert outcomes over 3, 7 and 14 days. No account or trading API key is required.
 
+## Browser radar
+
+After installing requirements, open `start-monitor.bat` or run `python -m klinebot.alpha_web --open`. The [local radar](http://127.0.0.1:8769/alpha) stores its data in `data/alpha_radar/`. Pass `--data-dir` to reuse an existing web radar database.
+
+The radar monitors Binance Spot and Alpha with coverage indicators, frozen alert evidence, taker flow and BTC context. It samples order books for watchlist assets and fresh alerts. Supported Ethereum and BNB Smart Chain assets can load V3 pool events on demand. The desktop interface is still available with the command below.
+
 ## Install and run
 
 Download the source and install Python 3.12 with Tcl/Tk. From the project directory, run these commands in PowerShell.
@@ -14,7 +20,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m klinebot.alt_monitor_app
 ```
 
-After setup, you can also double-click `start-monitor.bat`. Choose English in the language menu. The app remembers your selection. Select **Start monitor** to scan on a schedule or **Scan now** to run once. Closing the window stops monitoring.
+Choose English in the language menu. The app remembers your selection. Select **Start monitor** to scan on a schedule or **Scan now** to run once. Closing the window stops monitoring.
 
 ## Opportunity research
 

@@ -48,6 +48,8 @@ class PublicClient:
             'alpha': 'https://www.binance.com/bapi/defi/v1/public/alpha-trade/klines',
             'spot_pairs': 'https://data-api.binance.vision/api/v3/exchangeInfo',
             'spot': 'https://data-api.binance.vision/api/v3/klines',
+            'spot_depth': 'https://data-api.binance.vision/api/v3/depth',
+            'alpha_depth': 'https://www.binance.com/bapi/defi/v1/public/alpha-trade/fullDepth',
             'perp_klines': 'https://fapi.binance.com/fapi/v1/klines',
             'oi': 'https://fapi.binance.com/futures/data/openInterestHist',
             'funding': 'https://fapi.binance.com/fapi/v1/fundingRate',
@@ -85,6 +87,12 @@ class PublicClient:
             if isinstance(obj, dict) and isinstance(obj.get('symbols'), list):
                 return obj['symbols']
             raise PublicDataError('Binance Spot 交易对目录格式异常')
+        if route in ('spot_depth','alpha_depth'):
+            if route=='alpha_depth':
+                obj = obj.get('data') if isinstance(obj,dict) and obj.get('code')=='000000' else None
+            if isinstance(obj,dict) and isinstance(obj.get('bids'),list) and isinstance(obj.get('asks'),list):
+                return obj
+            raise PublicDataError('盘口响应不完整')
         if not isinstance(obj, list):
             raise PublicDataError('公开行情格式异常')
         return obj
