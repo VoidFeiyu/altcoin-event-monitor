@@ -61,6 +61,9 @@ class RadarHandler(BaseHTTPRequestHandler):
             if url.path=='/api/alpha/chain':
                 self.chain_evidence(url.query)
                 return
+            if url.path in ('/api/alpha/history','/api/alpha/history/event'):
+                self.history_response(url.path,url.query)
+                return
             if url.path not in ('/api/alpha/market','/api/coin'):
                 self.send_error(404)
                 return
@@ -83,9 +86,31 @@ class RadarHandler(BaseHTTPRequestHandler):
         except ValueError as error:
             self.json({'error':str(error)},400)
         except KeyError:
-            self.json({'error':'当前目录中找不到此交易对'},404)
+            error = '找不到该历史事件' if url.path=='/api/alpha/history/event' else '当前目录中找不到此交易对'
+            self.json({'error':error},404)
         except (OSError,sqlite3.Error):
             self.json({'error':'本机行情历史暂时不可读'},503)
+
+    def history_response(self, path, query_string):
+        query = parse_qs(query_string,max_num_fields=5,strict_parsing=True)
+        if any(len(values)!=1 for values in query.values()):
+            raise ValueError('异常历史请求无效')
+        if path.endswith('/event'):
+            if set(query)!={'id'} or not 1<=len(query['id'][0])<=160:
+                raise ValueError('事件标识无效')
+            self.json(self.radar.history.event(query['id'][0]))
+            return
+        if set(query)-{'page','source','model','threshold','q'}:
+            raise ValueError('历史筛选无效')
+        page = int(query.get('page',['1'])[0])
+        source = query.get('source',[''])[0]
+        model = query.get('model',[''])[0]
+        threshold = float(query['threshold'][0]) if 'threshold' in query else None
+        search = query.get('q',[''])[0].strip()
+        if (not 1<=page<=100000 or source not in ('','spot','alpha') or model not in ('','ae','core')
+                or threshold not in (None,.1,.2,.3,.5) or len(search)>80):
+            raise ValueError('历史筛选无效')
+        self.json(self.radar.history.page(page,source,model,threshold,search))
 
     def chain_evidence(self, query_string):
         query = parse_qs(query_string,max_num_fields=2,strict_parsing=True)

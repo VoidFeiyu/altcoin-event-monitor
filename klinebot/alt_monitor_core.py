@@ -225,14 +225,24 @@ class Store:
             out.append(d)
         return out
 
-    def track(self, asof: int, symbol=None):
+    def track(self, asof: int, symbol=None, *, lookback_days=16):
         # Finished results are retained. Re-read all saved paths so late backfills can repair gaps.
-        for alert in self.alerts(limit=10000,symbol=symbol,since=asof-16*DAY_MS if symbol else 0):
+        for alert in self.alerts(limit=10000,symbol=symbol,since=asof-lookback_days*DAY_MS if symbol else 0):
             if symbol and all(result.get('complete') for result in alert['outcomes'].values()):
                 continue
             raw = self.bars(alert['symbol'], alert['bar_ms'] + BAR_MS, min(asof, alert['bar_ms'] + 14 * DAY_MS))
             for hours in (72, 168, 336):
+                previous = alert['outcomes'][str(hours)]
+                if previous.get('complete'):
+                    continue
                 result = outcome(raw, alert['bar_ms'], alert['price'], alert['threshold'], hours, asof)
+                for direction in ('up','down'):
+                    hit = previous.get(direction)
+                    if hit and (not result[direction] or hit['at']<result[direction]['at']):
+                        result[direction] = hit
+                if result['up'] or result['down']:
+                    result.update(hit=True,status='双向已达标' if result['up'] and result['down'] else
+                                  '上涨已达标' if result['up'] else '下跌已达标')
                 with self.connect() as db:
                     db.execute('INSERT OR REPLACE INTO outcomes VALUES(?,?,?)', (alert['id'], hours, payload(result)))
 
